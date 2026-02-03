@@ -32,6 +32,6 @@ Because frameworks feel like training wheels. This project runs on **10% coding 
 
 I built this. I bullied a friendly AI into helping me. I spent more time wishing I had an Omnitrix than I did debugging.
 
-It’s free. It’s yours. Worship me later. **Muaa!**
+It’s free. It’s yours. **Muaa!**
 
 **PreritK.** *(Lead Architect / Professional AI Bully)*
