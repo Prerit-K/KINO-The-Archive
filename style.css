@@ -27,6 +27,8 @@ body {
 
 ::-webkit-scrollbar { width: 0px; background: transparent; }
 .hidden { display: none !important; }
+/* Add this right below the .hidden rule */
+.mobile-only { display: none; }
 
 /* Masquerade Gradients */
 .content-mask-bottom { position: fixed; bottom: 0; left: 0; width: 100%; height: 150px; background: linear-gradient(to top, var(--bg-color) 20%, transparent 100%); z-index: 900; pointer-events: none; }
@@ -379,6 +381,29 @@ body.modal-active #control-deck {
     background: var(--accent-color); border-color: var(--accent-color);
     box-shadow: 0 0 15px rgba(216, 31, 38, 0.6);
     transform: translate(160%, 0) scale(1.15); z-index: 5005;
+}
+
+/* --- UNIVERSAL PAGE HEADER (Restores Desktop Look) --- */
+.list-page-header {
+    padding: 100px 4% 40px 4%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    flex-wrap: wrap; 
+    gap: 15px;
+    width: 100%;
+}
+
+.list-page-header.empty-list {
+    padding-bottom: 10px;
+    display: block;
+}
+
+.list-page-header h2 {
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: white;
 }
 
 /* =========================================
@@ -874,7 +899,13 @@ body.modal-active #control-deck {
 .genre-bar-row { display: flex; align-items: center; margin-bottom: 18px; }
 .g-name { width: 110px; font-size: 0.9rem; color: #ddd; font-weight: 600; text-align: right; padding-right: 20px; }
 .g-track { flex-grow: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
-.g-fill { height: 100%; border-radius: 10px; box-shadow: 0 0 10px var(--accent-color); }
+/* FIX: Added background color so the bar is visible */
+    .g-fill { 
+        height: 100%; 
+        border-radius: 10px; 
+        background: var(--accent-color); /* The missing ingredient */
+        box-shadow: 0 0 10px var(--accent-color); 
+    }
 .g-count { width: 40px; font-size: 0.9rem; color: white; font-weight: 700; text-align: right; }
 
 /* The Legend */
@@ -1205,4 +1236,1390 @@ body.modal-active #control-deck {
     color: rgba(255,255,255,0.25);
     font-size: 2.5rem;
     transform: rotate(-5deg);
+}
+
+/* =========================================
+   PHASE 2: THE OBSIDIAN PROTOCOL (MOBILE)
+   ========================================= */
+
+@media (max-width: 768px) {
+    /* 1. Kill Desktop UI */
+    #brand-corner, 
+    #control-deck, 
+    .signature-wrapper, 
+    .content-mask-top, 
+    .content-mask-bottom, 
+    .scroll-paddle,
+    .custom-cursor { 
+        display: none !important; 
+    }
+
+    /* 2. Global Mobile Reset */
+    body {
+        background-color: #050505;
+        padding-top: 60px; /* Space for Mobile Header */
+        padding-bottom: 100px; /* Space for Mobile Dock */
+    }
+
+    /* SCROLL FIX: Forces the page to scroll unless a specific mode locks it */
+    body:not(.modal-active):not(.director-mode-active) {
+        overflow-y: auto !important;
+        height: auto !important;
+        position: static !important;
+        touch-action: auto !important; /* Ensures touch scrolling works */
+    }
+    
+    /* Ensure the HTML tag doesn't get stuck either */
+    html:not(.modal-active) {
+        overflow-y: auto !important;
+    }
+  
+    /* FIX: Auto-sizing container that respects screen edges */
+    .toast-container {
+        width: auto !important;
+        max-width: 90% !important; /* Safe zone from edges */
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        top: 20px !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+
+    .toast {
+        width: auto !important;
+        justify-content: center !important;
+        white-space: normal !important;
+        text-align: center !important;
+        
+        /* GLASS AESTHETIC - MORE TRANSLUCENT */
+        /* Changed from 0.85 to 0.60 for a clearer glass look */
+        background: rgba(10, 10, 10, 0.60) !important; 
+        
+        backdrop-filter: blur(25px) !important;
+        -webkit-backdrop-filter: blur(25px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+        color: #fff !important;
+        
+        /* Sizing & Text */
+        padding: 15px 24px !important; 
+        font-size: 0.9rem !important;
+        line-height: 1.5 !important; 
+        
+        /* SHAPE */
+        border-radius: 22px !important; 
+    }
+
+    /* CRITICAL FIX: Unlocks fixed positioning for the Suggest button */
+    #app {
+        will-change: auto !important;
+        transform: none !important;
+    }
+
+    .category-row {
+        padding-left: 0 !important; /* Remove physical padding so content can exist in the fade zone */
+        margin: 20px 0 0 0 !important;
+        
+        /* THE FADE: Materializes the title from the edge of the screen */
+        mask-image: linear-gradient(to right, transparent 0%, black 6%) !important;
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%) !important;
+    }
+
+    .row-header {
+        /* Use margin instead of padding to keep the text aligned at 6% */
+        margin-left: 6% !important; 
+        padding-left: 12px !important; 
+    }
+
+    /* Fixes alignment for Favorites, Watchlist, and Watched pages */
+    .library-section {
+        margin-bottom: 20px !important;
+        width: 100% !important;
+    }
+
+    /* Gap Fix: Tightens space between categories to match Home Screen */
+    .library-section {
+        margin-bottom: 0px !important;
+        width: 100% !important;
+        margin-top: 0 !important;
+    }
+
+    /* Fixes alignment AND removes hidden top gaps */
+    .library-section .category-row {
+        padding-left: 0 !important;
+        
+        /* KILL THE HIDDEN MARGIN: Changed from 20px to 0 */
+        margin-top: 0 !important; 
+        
+        mask-image: linear-gradient(to right, transparent 0%, black 6%) !important;
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%) !important;
+    }
+
+    /* Alignment Fix: Restores the "Perfect" position (6% indentation) */
+    .library-section .row-header-wrapper {
+        margin-left: 6% !important;
+        width: 94% !important;
+        padding-right: 6% !important;
+        margin-bottom: 10px !important;
+    }
+    .library-section .row-header {
+        margin-left: 0 !important; 
+    }
+    .mobile-only { display: block; }
+
+    /* 3. Mobile Header */
+    #mobile-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        /* The Balanced Choice: 110px */
+        height: 110px; 
+        display: flex;
+        align-items: flex-start; 
+        padding-top: 24px; 
+        justify-content: space-between;
+        padding-left: 20px;
+        padding-right: 20px;
+        z-index: 9000;
+        
+        /* THE ULTIMATE BLEND: Deepest at the top, smooth falloff */
+        background: linear-gradient(to bottom, 
+            #050505 0%, 
+            rgba(5, 5, 5, 0.98) 35%, 
+            rgba(5, 5, 5, 0.7) 65%, 
+            transparent 100%);
+        
+        pointer-events: none;
+
+        /* THE FIX: Re-enable touch for the header icons */
+    .m-logo, 
+    #m-search-container, 
+    .m-search-trigger, 
+    .m-search-bar input {
+        pointer-events: auto !important;
+    }
+    }
+
+/* When search is active, force everything to the right edge */
+.m-search-active #mobile-header {
+    justify-content: flex-end !important;
+    pointer-events: auto;
+}
+
+    /* --- REFINED MOBILE RAILGUN: Glassy, Bouncy, Full-Width --- */
+    
+    /* 1. Hide the Logo when search is open */
+    .m-search-active .m-logo {
+    display: none !important;
+}
+
+    #m-search-container {
+    margin-left: auto;
+    position: relative;
+    display: flex; align-items: center; justify-content: flex-end;
+    height: 48px; width: 48px; 
+    z-index: 8500;
+    
+    /* TUNED CLOSING: Reduce bounce, make it faster and smoother */
+    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+}
+
+#m-search-container.m-search-open {
+    /* Change 100% to this for a smoother transition from the right */
+    width: calc(100vw - 40px); 
+    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+    .m-search-trigger {
+        width: 44px; height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        /* Increased glassiness: lower opacity, higher blur */
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        z-index: 10;
+        color: white;
+        transition: all 0.4s var(--ease-lux);
+    }
+
+    /* OPEN STATE: Transforming Icon to X */
+    .m-search-open .m-search-trigger {
+        background: #fff;
+        color: #000;
+        transform: rotate(180deg); /* Smooth spin to X */
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    }
+
+    /* The "X" Logic: We use a pseudo-element to create the cross-line */
+    .m-search-open .m-search-trigger::before {
+        content: '✕';
+        position: absolute;
+        font-size: 1.2rem;
+        font-weight: 800;
+    }
+    /* Hide the original SVG icon when the pseudo X is there */
+    .m-search-open .m-search-trigger svg {
+        opacity: 0;
+    }
+
+    .m-search-bar {
+    position: absolute; right: 0;
+    width: 100%; height: 44px;
+    background: rgba(5, 5, 5, 0.95); 
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Kept subtle border */
+    border-radius: 30px;
+    padding: 0 55px 0 20px;
+    opacity: 0;
+    transform: scaleX(0.8);
+    transform-origin: right;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    pointer-events: none;
+}
+
+.m-search-open .m-search-bar {
+    opacity: 1;
+    transform: scaleX(1);
+    pointer-events: all;
+    /* TUNED OPENING */
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+    #m-search-input {
+        width: 100%; height: 100%;
+        background: transparent; border: none;
+        color: white; font-size: 1rem; font-weight: 500;
+    }
+
+    /* FULL SCREEN BLUR OVERLAY */
+    #mobile-search-overlay {
+        position: fixed; inset: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.7); /* DEEP DARKNESS */
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        z-index: 7400;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.4s ease;
+    }
+
+    /* Show blur when active */
+    body.m-search-active #mobile-search-overlay {
+        opacity: 1; pointer-events: all;
+    }
+
+    
+    .m-logo {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--accent-color);
+        text-shadow: 0 0 15px rgba(216, 31, 38, 0.4);
+        letter-spacing: 3px;
+        
+        /* ALIGNMENT FIX: Matches the Search Button's height exactly */
+        height: 44px !important; 
+        display: flex !important;
+        align-items: center !important; 
+        
+        /* Optional: Ensures it doesn't get squished */
+        flex-shrink: 0 !important;
+    }
+
+    /* 4. THE MOBILE DOCK (Restoring Bounce & Fixing Search Z-Index) */
+    #mobile-dock {
+        position: fixed; bottom: 20px; left: 50%;
+        transform: translateX(-50%);
+        width: 92%; height: 72px; 
+        background: rgba(10, 10, 10, 0.85);
+        backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 22px;
+        z-index: 9500;
+        /* Added opacity and better bottom transition */
+        transition: height 0.5s var(--ease-lux), bottom 0.4s var(--ease-lux), opacity 0.3s ease;
+        overflow: hidden;
+        display: flex; flex-direction: column;
+    }
+
+    /* HUB OPEN STATE */
+    #mobile-dock.m-hub-active {
+        height: 245px;
+        padding-top: 5px;
+        padding-bottom: 0;
+    }
+
+    /* FIX: Hide dock when search is active so it doesn't float over results */
+    body.m-search-active #mobile-dock {
+        opacity: 0;
+        pointer-events: none;
+        bottom: -100px;
+    }
+
+    #m-nav-strip {
+        display: flex; align-items: center; justify-content: space-around;
+        width: 100%; height: 72px;
+        flex-shrink: 0;
+        transition: opacity 0.3s var(--ease-lux);
+    }
+
+    .m-hub-active #m-nav-strip { opacity: 0; pointer-events: none; }
+
+    /* NAV ITEMS: Restoring the high-performance bounce */
+    .m-nav-item {
+        color: rgba(255, 255, 255, 0.35);
+        display: flex; align-items: center; justify-content: center;
+        width: 52px; height: 52px;
+        border-radius: 14px;
+        /* Changed ease-spring to a specific cubic-bezier for a better "pop" */
+        transition: background 0.3s ease, color 0.3s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* THE BOUNCE: Subtle but responsive touch feedback */
+    /* THE BOUNCE: CSS for the animation */
+    .m-nav-item:active, 
+    .m-nav-item.tap-bounce { 
+        transform: scale(0.82) !important; /* Slightly more noticeable bounce */
+        background: rgba(255, 255, 255, 0.05); /* Visual feedback */
+    }
+
+    .m-nav-item.m-active {
+        background: rgba(216, 31, 38, 0.15) !important;
+        color: var(--accent-color) !important;
+        border: 1px solid rgba(216, 31, 38, 0.2);
+    }
+
+    .m-nav-item svg { width: 24px; height: 24px; stroke-width: 2.5; }
+
+    /* 5. OVERLAY TYPOGRAPHY (Stricter Simple Overrides) */
+    .m-stats-header-main, 
+    .m-legend-heading-simple, 
+    #settings-modal h1, 
+    #stats-modal h1 {
+        font-family: 'Inter', -apple-system, sans-serif !important;
+        font-size: 1.2rem !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 3px !important;
+        color: white !important;
+        margin-top: 10px !important;
+        margin-bottom: 30px !important;
+        text-shadow: none !important; /* Removes cinematic glow for simplicity */
+    }
+
+    /* HUB CONTENT: Clean fade and rise */
+    #m-hub-strip {
+        opacity: 0;
+        transform: translateY(15px);
+        transition: opacity 0.4s var(--ease-lux), transform 0.4s var(--ease-lux);
+        padding: 0 15px 20px 15px;
+        margin-top: -40px; /* THE FIX: Pulls the whole grid upward */
+    }
+
+    .m-hub-active #m-hub-strip {
+        opacity: 1;
+        pointer-events: all;
+        transform: translateY(0);
+    }
+
+    /* 5. HUB GRID INTERNALS */
+    .m-hub-row-top { display: flex; justify-content: space-around; margin-bottom: 30px; }
+    
+    .m-squicle-wrapper {
+        display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1;
+        transition: transform 0.2s var(--ease-spring);
+    }
+
+    /* Squicle touch feedback */
+    .m-squicle-wrapper:active .m-squicle { transform: scale(0.9); }
+
+    .m-squicle {
+        width: 58px; height: 58px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .m-squicle svg { width: 22px; height: 22px; color: rgba(255,255,255,0.7); }
+
+    /* Legend mark centering fix */
+    .m-legend-mark {
+        font-family: 'Inter', sans-serif !important;
+        font-size: 26px !important; font-weight: 800 !important;
+        color: rgba(255,255,255,0.7) !important; line-height: 1 !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        padding-top: 5px !important;
+    }
+
+    .m-squicle-wrapper span {
+        font-size: 0.58rem; text-transform: uppercase; color: #666;
+        font-weight: 700; text-align: center; line-height: 1.1; min-height: 2.2em;
+    }
+
+    /* Utility & Signature */
+    .m-hub-row-utility {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 0; /* No bottom margin here */
+        padding: 0 10px;
+    }
+
+    .m-hub-row-utility span {
+        flex: 1;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #444;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+    }
+
+    .m-hub-row-utility span:nth-child(1) { text-align: right; }
+    .m-hub-row-utility span:nth-child(3) { text-align: center; }
+    .m-hub-row-utility span:nth-child(5) { text-align: left; }
+
+    .m-hub-row-utility .m-sep {
+        flex: 0;
+        padding: 0 12px;
+        opacity: 0.3;
+        color: #444;
+    }
+
+    /* THE SIGNATURE SEATING */
+    .m-hub-signature {
+        font-family: 'La Belle Aurore', cursive;
+        color: rgba(255, 255, 255, 0.15);
+        font-size: 1.3rem;
+        text-align: center;
+        line-height: 1;
+        
+        /* DISTANCE X: Equal space above and below */
+        margin-top: 30px;    /* Space from buttons */
+        margin-bottom: 30px; /* Space from bottom edge */
+    }
+
+    /* Burger Lines Fixed */
+    .m-burger { display: flex; flex-direction: column; gap: 5px; width: 20px; align-items: center; }
+    .m-burger span { display: block; height: 2.5px; background: currentColor; border-radius: 5px; }
+
+/* 6. Row & Grid Logic: Tightens internal padding */
+    .library-container.row-view, 
+    .row-container {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        gap: 15px !important;
+        
+        /* KILL THE HIDDEN PADDING: Reduced bottom padding from 30px to 10px */
+        padding: 10px 6% 10px 6% !important; 
+        
+        width: 100% !important;             
+        margin: 0 !important;               
+        
+        scroll-padding-left: 6% !important;
+        scroll-snap-type: x mandatory !important; 
+        
+        mask-image: linear-gradient(to right, transparent 0%, black 6%, black 92%, transparent 100%) !important;
+        -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 92%, transparent 100%) !important;
+        
+        -webkit-overflow-scrolling: touch;
+    }
+
+/* Adjusted for the edge fade */
+.row-container::after, .library-container.row-view::after {
+    content: '';
+    flex: 0 0 10%; /* Increased from 6% to 10% to account for the mask */
+}
+
+/* Ensure cards don't shrink in the row view */
+.row-view .card, 
+.row-container .card {
+    flex: 0 0 140px !important;
+    height: 210px !important;
+    scroll-snap-align: start !important;
+}
+
+/* Keep the Grid View as 2-columns when 'Show All' is toggled */
+.library-container.grid-view {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 15px !important;
+        padding: 20px 6% !important; /* Forces 6% alignment on grid view */
+        width: 100% !important;
+    }
+
+.grid-view .card {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 2/3 !important;
+}
+
+    /* --- /* --- THE JUNIOR MONOLITH (Mobile Hero) --- */
+    #hero-container {
+        padding-top: 15px; /* Gives the tilting card a bit of breathing room from the deeper fade */
+        height: 70vh; /* Slightly taller for more drama */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        perspective: 1000px; /* Essential for the tilt effect */
+    }
+
+    .hero-layout-grid.suggestion-one {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    /* The Floating/Tilting Card */
+    .hero-poster-box {
+        position: relative;
+        width: 220px; /* Professional card size */
+        aspect-ratio: 2/3;
+        border-radius: 15px;
+        z-index: 10;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        border: 1px solid rgba(255,255,255,0.15);
+        transform-style: preserve-3d;
+        transition: transform 0.1s ease-out; /* Smooth gyro return */
+        display: block !important; /* Force visibility */
+    }
+
+    /* The Blurred Background with Vignette */
+    .hero-bg-wrapper {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+    }
+
+    .hero-img-blur {
+        filter: blur(5px) brightness(0.5);
+        transform: scale(1.1) translateY(-5px); /* Pulls the image up slightly so the bottom is tucked away */
+    }
+
+    .hero-vignette {
+        position: absolute;
+        inset: -2px;
+        /* Layer 1: The BOTTOM FADE (Now taller and deeper) | Layer 2: The Center Focus */
+        background: 
+            linear-gradient(to top, 
+                #050505 0%, 
+                #050505 15%, 
+                rgba(5, 5, 5, 0.8) 35%, 
+                transparent 70%),
+            radial-gradient(circle at center, transparent 10%, #050505 100%);
+        opacity: 1; /* Set to 1 to ensure the black is solid at the base */
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    /* The Info Stack below the card */
+    .hero-info-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px; /* Just enough space to look intentional and clean */
+        text-align: center;
+        align-items: center !important;
+        z-index: 10;
+        width: 100%;
+    }
+
+    .hero-title-v2 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        line-height: 1.2; /* Added a tiny bit of height for readability */
+        margin-bottom: 0;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    /* This kills the description on mobile but keeps it on desktop */
+    .hero-desc-v2 {
+        display: none !important;
+    }
+
+    .h-meta-row {
+        justify-content: center;
+        margin-bottom: 5px; /* Reduced from 20px */
+        font-size: 0.7rem;
+        opacity: 0.8;
+    }
+
+    /* The Crimson Button - Sized for Mobile */
+    .hero-info-stack .btn-primary {
+        padding: 12px 35px;
+        font-size: 0.8rem;
+        border-radius: 50px; /* More pill-like for mobile */
+    }
+
+    .hero-ghost-title { display: none; }
+
+    .hero-desc-v2 {
+        display: none !important;
+    }
+
+    /* 8. Full-Screen Overlay Layers (Search, Stats, etc.) */
+    [id*="-overlay"], [id*="-layer"] {
+        position: fixed; inset: 0;
+        background: #050505; z-index: 8000;
+        padding: 80px 6% 20px 6%;
+        overflow-y: auto;
+        transition: transform 0.4s var(--ease-lux), opacity 0.3s ease;
+    }
+
+    .m-layer-hidden {
+        transform: translateY(100%);
+        opacity: 0; pointer-events: none;
+    }
+    
+    #mobile-stats-layer:not(.m-layer-hidden) {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+    z-index: 9000 !important;
+}
+
+    /* Mobile Search Layout */
+    .m-search-wrap {
+        display: flex; align-items: center; gap: 15px;
+        margin-bottom: 30px;
+    }
+
+  
+    #m-search-results {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .m-search-close { display: none !important; }
+
+    /* --- THE GLASS MONOLITH HUD (Mobile Only) --- */
+#mobile-stats-layer {
+    background: #050505 !important;
+    padding: 80px 6% 140px 6% !important; /* Added more top space for heading */
+    display: block !important; /* Allow scrolling */
+    overflow-y: auto;
+}
+
+/* 1. Immersive Heading */
+.m-stats-header-main {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.5rem;
+    color: white;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 40px;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+/* 2. Massive, Bold Total Count */
+.m-stats-ghost-total {
+    position: relative; /* Changed from fixed to relative to sit in the flow */
+    font-size: 8rem; /* Massive */
+    font-weight: 900;
+    color: white;
+    text-align: center;
+    line-height: 1;
+    margin-bottom: 10px;
+    background: linear-gradient(to bottom, #fff 30%, rgba(255,255,255,0.1));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px rgba(255,255,255,0.1));
+}
+
+/* 3. The Crimson Rank Capsule (Matching your Legend style) */
+.m-stats-rank-tablet {
+    width: fit-content;
+    margin: 0 auto 50px auto;
+    padding: 8px 25px;
+    background: var(--accent-color); /* Solid Crimson */
+    border-radius: 50px;
+    box-shadow: 0 0 25px rgba(216, 31, 38, 0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.m-stats-rank-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.m-stats-rank-label {
+    font-size: 0.7rem;
+    color: var(--accent-color);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.m-stats-rank-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* 3. The Grid for Movies/Series */
+.m-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+    margin-bottom: 40px;
+}
+
+.m-stats-card {
+    background: rgba(15, 15, 15, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.m-card-val { font-size: 2rem; font-weight: 800; color: white; }
+.m-card-label { font-size: 0.6rem; color: #666; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+
+/* 4. Liquid Vial Genre Bars */
+.m-vial-section {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+}
+
+.m-vial-row {
+    margin-bottom: 25px;
+}
+
+.m-vial-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #888;
+}
+
+.m-vial-track {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.m-vial-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8a0005, var(--accent-color));
+    border-radius: 50px;
+    box-shadow: 0 0 15px var(--accent-color);
+    width: 0%; /* Animated via JS */
+    transition: width 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+    /* 9. Movie Modal Mobile Adjustments - BRANDED COMPACT VERSION */
+    .modal-content {
+        width: 100%; height: 100%; max-height: 100vh;
+        border-radius: 0; border: none;
+    }
+
+    /* INCREASED PADDING: Adds 150px of empty space at the bottom so you can scroll content ABOVE the dock */
+    .modal-body { padding: 0 6% 150px 6% !important; }
+
+    .modal-meta {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        margin-bottom: 20px !important;
+    }
+
+    .meta-info-group {
+        justify-content: flex-start !important;
+        width: 100% !important;
+        gap: 5px !important;
+    }
+
+    /* --- REFINED MOBILE ACTION BUTTONS (OBSIDIAN STYLE) --- */
+    
+    /* 1. The Grid Container */
+    .modal-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important; /* Increased gap for cleaner look */
+        padding: 20px 0 !important;
+        margin-top: 10px !important;
+        background: transparent !important;
+        border: none !important;
+        position: static !important;
+    }
+
+    /* 2. The Buttons */
+    .modal-actions .action-btn {
+        width: 100% !important;
+        height: 50px !important; /* Taller for better touch target */
+        
+        /* Glassy Dark Theme */
+        background: rgba(20, 20, 20, 0.6) !important;
+        backdrop-filter: blur(15px) !important;
+        -webkit-backdrop-filter: blur(15px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 16px !important; /* Squaricle shape matching your hub */
+        
+        /* Typography */
+        font-family: 'Inter', sans-serif !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 1px !important;
+        text-transform: uppercase !important;
+        color: #ccc !important;
+        
+        /* Layout */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+
+    /* 3. Icons inside buttons */
+    .modal-actions .action-btn svg {
+        width: 16px !important;
+        height: 16px !important;
+        opacity: 0.7 !important;
+        margin: 0 !important;
+        margin-right: 5px !important;
+    }
+
+    /* 4. ACTIVE STATES (The Glow Up) */
+    
+    /* Favorite (Crimson) */
+    .action-btn.active#btn-fav {
+        background: rgba(216, 31, 38, 0.15) !important;
+        border-color: var(--accent-color) !important;
+        color: white !important;
+        box-shadow: 0 0 20px rgba(216, 31, 38, 0.2) !important;
+    }
+    
+    /* Watchlist (Future Blue) */
+    .action-btn.active#btn-watch {
+        background: rgba(63, 169, 245, 0.15) !important;
+        border-color: var(--future-color) !important;
+        color: white !important;
+        box-shadow: 0 0 20px rgba(63, 169, 245, 0.2) !important;
+    }
+    
+    /* Watched (Success Green) */
+    .action-btn.active#btn-watched {
+        background: rgba(70, 211, 105, 0.15) !important;
+        border-color: var(--green-highlight) !important;
+        color: white !important;
+        box-shadow: 0 0 20px rgba(70, 211, 105, 0.2) !important;
+    }
+
+    /* Share Button (Clean Glass) */
+    #btn-share {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: #ddd !important;
+    }
+    
+
+    /* --- MOBILE IDENTITY OVERHAUL --- */
+.mobile-only .identity-wrapper {
+    padding: 40px 20px;
+    justify-content: center;
+    min-height: 80vh;
+    gap: 30px;
+}
+
+/* The Pedestal / Lightbox Effect */
+.mobile-only .ticket-section {
+    position: relative;
+    padding: 20px 0;
+}
+
+.mobile-only .ticket-section::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%;
+    height: 120%;
+    background: radial-gradient(circle, rgba(216, 31, 38, 0.15) 0%, transparent 70%);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* --- THE ARCHIVE PASS: BIGGER & UNBOXED --- */
+#settings-modal .landscape-ticket {
+    /* 1. Keep rigid proportions */
+    width: 500px !important;
+    height: 220px !important;
+    min-width: 500px !important;
+    max-width: 500px !important;
+
+    /* 2. INCREASE SCALE: From 0.65 to 0.75 for maximum size */
+    transform: scale(0.75) !important;
+
+    /* 3. Center it */
+    transform-origin: center center;
+    margin: -30px auto !important; /* Adjusted margin for the bigger size */
+    display: flex !important;
+    flex-shrink: 0 !important;
+
+    /* A slightly deeper shadow so it pops off the screen */
+    box-shadow: 0 30px 70px rgba(0,0,0,0.9);
+}
+
+/* For smaller phones (iPhone SE) - still big, just fits better */
+@media (max-width: 370px) {
+    #settings-modal .landscape-ticket {
+        transform: scale(0.68) !important;
+        margin: -40px auto !important;
+    }
+}
+
+/* "REMOVING THE BOX" - Zero side padding to let the ticket sit edge-to-edge */
+#settings-modal .identity-wrapper {
+    padding: 40px 0px !important; /* Top/Bottom padding only */
+    overflow-x: hidden; /* Prevents horizontal scrolling if it barely touches edges */
+    width: 100%;
+}
+
+#settings-modal .ticket-section {
+    width: 100% !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: visible !important;
+}
+
+/* The Access Timestamp */
+.mobile-access-tag {
+    font-family: 'Inter', monospace;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 15px;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+
+/* Final Mobile Legend Overhaul */
+    #st-ladder {
+        overflow-y: auto !important; /* ENABLE SCROLL ON CONTAINER */
+        display: block !important;
+        padding-top: 20px;
+    }
+
+    #st-ladder .legend-pop-wrapper {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        height: auto !important; /* Let it expand */
+        padding: 60px 6% 100px 6% !important;
+        background: transparent !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .m-legend-heading-simple {
+        font-family: 'Inter', sans-serif !important;
+        font-size: 1.4rem !important;
+        font-weight: 800 !important;
+        color: white !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+    }
+
+    .m-legend-stack {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 20px !important;
+        width: 100% !important;
+    }
+
+    .m-clean-card {
+        background: rgba(255, 255, 255, 0.02) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 16px !important;
+        padding: 25px 20px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .m-card-label-simple {
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        color: #555 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+        margin-bottom: 15px !important;
+        border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+        width: 100% !important;
+        padding-bottom: 8px !important;
+    }
+
+    .m-status-text {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        color: #888 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+    }
+
+    /* Suggest Button: Exact Desktop Visual Clone */
+    .m-clean-card .shuffle-btn {
+        display: inline-flex !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(10px) !important;
+        border-radius: 12px !important;
+        color: #ddd !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        padding: 10px 25px !important;
+        font-size: 0.75rem !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        width: auto !important;
+        margin: 0 auto !important; /* Forces centering */
+    }
+
+    /* Active Tap State (Mobile Hover) */
+    .m-clean-card .shuffle-btn:active {
+        background: white !important;
+        color: black !important;
+        border-color: white !important;
+        transform: scale(0.95);
+        box-shadow: 0 0 15px rgba(255,255,255,0.4) !important;
+    }
+
+    .m-clean-card .season-tab {
+        height: 34px !important;
+        font-size: 0.7rem !important;
+        padding: 0 12px !important;
+        background: #000 !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: #ccc !important;
+    }
+/* --- FINAL REFINED CREDITS: THE ADAPTIVE CARD --- */
+
+/* 1. Ensure the parent container centers the card perfectly */
+#settings-modal .settings-content {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+
+/* FIX: Scrollable Container for Small Screens */
+   /* FIX: Fixed Header/Footer, Scrollable Body */
+    .mobile-only .directors-note {
+        width: 90% !important;
+        
+        /* Fixed height ensures the header/footer stay put relative to the screen */
+        height: 70vh !important; 
+        max-height: 70vh !important;
+        
+        margin: 0 auto !important;
+        
+        background: #000000 !important;
+        border: 1px solid rgba(216, 31, 38, 0.2) !important;
+        border-radius: 20px !important;
+        
+        /* Flex Layout to separate Header, Body, Footer */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+        
+        padding: 30px 25px !important; /* Outer padding */
+        
+        /* DISABLE SCROLL on the container (so header/footer don't move) */
+        overflow: hidden !important; 
+        
+        position: relative;
+        box-shadow: 0 40px 100px rgba(0,0,0,1);
+    }
+
+/* /* --- DIRECTOR NOTE INTERNALS --- */
+
+    /* 1. PINNED HEADER (Stays at the top) */
+    .mobile-only .note-header,
+    .mobile-only .note-sub {
+        flex-shrink: 0 !important; /* Never shrink */
+        margin: 0 !important;
+        text-align: center;
+    }
+    
+    .mobile-only .note-header {
+        font-size: 1.3rem !important;
+        margin-bottom: 5px !important;
+        margin-top: 10px !important;
+    }
+    
+    .mobile-only .note-sub {
+        margin-bottom: 15px !important;
+        opacity: 0.7;
+    }
+
+    /* 2. SCROLLABLE BODY (Middle Section) */
+    .mobile-only .note-body {
+        font-size: 0.9rem !important;
+        padding: 0 5px !important;
+        
+        /* This pushes the header up and signature down */
+        flex-grow: 1 !important; 
+        
+        /* This enables scrolling ONLY for the text */
+        overflow-y: auto !important;
+        
+        /* Smooth scrolling */
+        -webkit-overflow-scrolling: touch !important;
+        
+        /* Spacing so text doesn't touch the fixed elements */
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
+        
+        /* Fades the text slightly at the edges for a premium feel */
+        mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+    }
+
+    /* 3. PINNED FOOTER (Stays at the bottom) */
+    .mobile-only .note-signature,
+    .mobile-only .note-ps {
+        flex-shrink: 0 !important; /* Never shrink */
+        margin: 0 !important;
+        text-align: center;
+    }
+
+    .mobile-only .note-signature {
+        margin-top: 5px !important;
+    }
+    
+    /* --- FINAL MOBILE SUB-PAGE ALIGNMENT --- */
+    
+    /* 1. Mobile Page Header */
+    .list-page-header {
+        /* TOP | RIGHT | BOTTOM | LEFT */
+        /* Right stays at 6% (locks filter button). Left goes to 0 or 2% (moves title). */
+        padding: 40px 6% 0 2% !important; 
+        
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        
+        margin-bottom: 40px !important;
+    }
+
+    /* FLOATING SUGGEST BUTTON (Watchlist Only) */
+    /* FLOATING SUGGEST BUTTON (Watchlist Only) */
+    .list-page-header .shuffle-btn {
+        position: fixed !important;
+        bottom: 110px !important; 
+        
+        /* MOVE TO RIGHT */
+        right: 6% !important;      
+        left: auto !important; 
+        
+        z-index: 9000 !important; 
+
+        /* Glass Aesthetic */
+        background: rgba(10, 10, 10, 0.85) !important;
+        backdrop-filter: blur(25px) !important;
+        -webkit-backdrop-filter: blur(25px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        
+        /* SQUARICLE SHAPE */
+        border-radius: 16px !important; 
+        
+        /* Sizing & Text */
+        width: auto !important;
+        height: 44px !important;
+        padding: 0 20px !important;
+        font-size: 0.75rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 1px !important;
+        color: #fff !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+        
+        margin: 0 !important;
+        transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.2s ease !important;
+    }
+
+    /* HIDE SUGGEST BUTTON WHEN MODAL IS OPEN */
+    body.modal-active .list-page-header .shuffle-btn {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateY(20px) !important;
+    }
+
+    .list-page-header .shuffle-btn:active {
+        transform: scale(0.95) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .list-page-header h2 {
+        /* Fine-tune just the text position here */
+        padding-left: 17px !important; 
+        font-size: 1.6rem !important; 
+        margin: 0 !important;
+        border: none !important;
+        flex-shrink: 0; 
+    }
+
+    /* Aligns the Sort Dropdown/Suggest button */
+    .list-page-header > div {
+        padding-left: 0 !important;
+        margin-bottom: 0 !important;
+        
+        /* REMOVED MARGIN: Now it hits the 6% line exactly, matching the 'Show All' buttons */
+        margin-right: 0 !important; 
+    }
+    
+    /* Ensures the list sections don't have massive gaps between them */
+    .list-page-header + .library-section {
+        margin-top: 10px !important;
+    }
+    /* 2. Kill Hover Icons & Effects (MOBILE ONLY) */
+    
+    /* Prevents the card from scaling/jumping on tap */
+    .card:hover {
+        transform: none !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+        border: none !important;
+    }
+
+    /* COMPLETELY HIDES icons (Rating, Fav, Watchlist, Overlay) on mobile touch */
+    .card:hover .card-rating-badge,
+    .card:hover .card-icon-container,
+    .card:hover .card-info-overlay {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Stops titles from glowing or reacting to touch */
+    .row-header, 
+    .row-header-wrapper,
+    .list-page-header h2 {
+        transform: none !important;
+        transition: none !important;
+        text-shadow: none !important;
+        pointer-events: none !important;
+    }
+
+    /* Keeps buttons functional but removes the 'bounce' hover color */
+    .library-toggle, .dropdown-btn, .shuffle-btn {
+        pointer-events: auto !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    /* --- DIRECTOR MODE (Immersive State) --- */
+    
+    /* 1. Hide Dock & Search */
+    body.director-mode-active #mobile-dock,
+    body.director-mode-active #m-search-container {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateY(50px) !important;
+        transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+    }
+
+    /* 2. PURE BLACK BACKGROUND & SCROLL LOCK */
+    body.director-mode-active #settings-modal {
+        background: #000000 !important; /* Pure Black (Fixed Gray Issue) */
+        backdrop-filter: none !important; 
+        z-index: 9999 !important; 
+    }
+    
+    body.director-mode-active {
+        overflow: hidden !important; 
+    }
+
+    /* 3. CENTER THE CARD VERTICALLY */
+    /* We remove top padding and force flex centering */
+    body.director-mode-active #settings-modal .settings-content {
+        transform: none !important; /* Keep this to let the back button float correctly */
+        animation: none !important;
+        justify-content: center !important; /* Fixes Vertical Centering */
+        padding-top: 0 !important;
+    }
+
+    /* 4. The Floating Back Button (MOVED TO RIGHT) */
+    .director-back-btn {
+        position: fixed !important;
+        bottom: 30px !important;
+        
+        /* MOVED TO RIGHT */
+        right: 6% !important; 
+        left: auto !important;
+        
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 50% !important;
+        
+        /* Glass Aesthetic */
+        background: rgba(20, 20, 20, 0.9) !important;
+        backdrop-filter: blur(20px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8) !important;
+        
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 10000 !important; 
+        color: white !important;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.4s ease 0.2s !important;
+        cursor: pointer !important;
+    }
+
+    /* Show button when active */
+    body.director-mode-active .director-back-btn {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+    }
+
+    .director-back-btn svg {
+        width: 20px !important;
+        height: 20px !important;
+        stroke-width: 2.5 !important;
+        transform: translateX(1px); /* Visual center correction */
+    }
+
 }

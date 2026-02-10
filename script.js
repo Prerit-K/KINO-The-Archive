@@ -70,7 +70,11 @@ const state = {
     currentListSort: 'default',
     
     // NEW: Idle State
-    idleTimer: null
+    idleTimer: null,
+
+    // Add these to your existing 'state' object:
+lastHomeTap: 0,
+isHubOpen: false
 };
 
 const elements = {
@@ -179,8 +183,16 @@ const api = {
 
 const app = {
     init() {
+        // --- PWA REGISTRATION (Paste this block here) ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('KINO Service Worker Registered'))
+                .catch(err => console.log('SW Failed:', err));
+        }
+        // ------------------------------------------------
+
         this.loadState();
-        this.initIdleTracker(); // NEW: Ghost Mode
+        this.initIdleTracker(); 
         this.setupEventListeners();
         this.setupObservers();
         this.goHome();
@@ -221,6 +233,44 @@ const app = {
             if (e.target === elements.settingsModal) this.closeSettings();
         });
 
+        // --- MOBILE CLICK-OUTSIDE LOGIC ---
+        
+        // 1. Search Overlay: Click empty space to close
+        const searchOverlay = document.getElementById('mobile-search-overlay');
+        if (searchOverlay) {
+            searchOverlay.addEventListener('click', (e) => {
+                // Only close if clicking the background, not the cards inside
+                if (e.target === searchOverlay || e.target.id === 'm-search-results') {
+                    this.closeMobileSearch();
+                }
+            });
+        }
+
+        // 2. Director's Note / Settings: Click background to close
+        if (elements.settingsModal) {
+            elements.settingsModal.addEventListener('click', (e) => {
+                // Works for both Desktop and Mobile Director Mode
+                if (e.target === elements.settingsModal) {
+                    this.closeSettings();
+                }
+            });
+        }
+
+        // 3. Legend / Stats: Click background to close
+        const mobileLayers = ['st-ladder', 'mobile-stats-layer'];
+        mobileLayers.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('click', (e) => {
+                    // If clicking the container itself (the backdrop), close it
+                    if (e.target === el) {
+                        if (id === 'st-ladder') this.toggleRankLadder();
+                        if (id === 'mobile-stats-layer') this.closeStats();
+                    }
+                });
+            }
+        });
+
         // Add this: Wiring the Signature
 const sig = document.querySelector('.signature-wrapper');
 if(sig) sig.addEventListener('click', () => this.openCredits());
@@ -254,36 +304,54 @@ if(sig) sig.addEventListener('click', () => this.openCredits());
         });
 
         // Browser Back Button Support
+        // Browser Back Button Support (THE ULTIMATE MOBILE FIX)
         window.addEventListener('popstate', (e) => {
-    // 1. Priority: Close any open movie detail modal
-    if (elements.modal.classList.contains('open')) {
-        elements.modal.classList.remove('open');
-        document.body.classList.remove('modal-active');
-        this.resetScroll(); // Helper to re-enable scrolling
-        return; 
-    }
+            if (window.innerWidth <= 768) this.setMobileDockVisibility(true);
 
-    // 2. Secondary: Close any settings/stats/legend overlays
-    const overlays = [elements.settingsModal, document.getElementById('stats-modal'), document.getElementById('st-ladder')];
-    let overlayClosed = false;
-    
-    overlays.forEach(ov => {
-        if (ov && ov.classList.contains('open')) {
-            ov.classList.remove('open');
-            overlayClosed = true;
-        }
-    });
+            // 1. PRIORITY: Close Search Overlay
+            if (document.body.classList.contains('m-search-active')) {
+                this.closeMobileSearch();
+                return;
+            }
 
-    if (overlayClosed) {
-        this.resetScroll();
-        return;
-    }
+            // 2. PRIORITY: Close Expanded Hub
+            if (state.isHubOpen) {
+                this.toggleMobileHub();
+                return;
+            }
 
-    // 3. Logic: If we are in a sub-view (Favorites/Watchlist), go back to Home
-if (state.currentView !== 'home') {
-    this.goHome();
-}
-});
+            // 3. PRIORITY: Close Director Mode / Overlays
+            // This handles Settings, Stats, Legend, and the Director's Note
+            const overlays = [elements.settingsModal, document.getElementById('stats-modal'), document.getElementById('st-ladder')];
+            let overlayClosed = false;
+            
+            overlays.forEach(ov => {
+                if (ov && ov.classList.contains('open')) {
+                    ov.classList.remove('open');
+                    overlayClosed = true;
+                }
+            });
+
+            if (overlayClosed) {
+                // Important: If we just closed the Director's Note, we must un-hide the UI
+                document.body.classList.remove('director-mode-active');
+                this.resetScroll();
+                return;
+            }
+
+            // 4. PRIORITY: Close Movie Detail Modal
+            if (elements.modal.classList.contains('open')) {
+                elements.modal.classList.remove('open');
+                document.body.classList.remove('modal-active');
+                this.resetScroll(); 
+                return; 
+            }
+
+            // 5. Fallback: Return to Home
+            if (state.currentView !== 'home') {
+                this.goHome();
+            }
+        });
 
         // Tab Visibility
         document.addEventListener('visibilitychange', () => {
@@ -318,6 +386,20 @@ if (state.currentView !== 'home') {
                 if (e.target === ladder) this.toggleRankLadder();
             });
         }
+
+    // Mobile Dock "Squish" Protocol
+        if (window.innerWidth <= 768) {
+            document.querySelectorAll('.m-nav-item').forEach(item => {
+                item.addEventListener('touchstart', () => {
+                    item.classList.add('tap-bounce');
+                }, { passive: true });
+                
+                item.addEventListener('touchend', () => {
+                    setTimeout(() => item.classList.remove('tap-bounce'), 150);
+                }, { passive: true });
+            });
+        }
+
     },
 
     setupObservers() {
@@ -440,17 +522,46 @@ if (state.currentView !== 'home') {
     async loadWatched() { this.renderListSection('watched'); },
 
     updateNav(viewName) {
-        // Updated selector for Nav Pill
+        // Only hide the mobile stats layer if we are navigating to a main view
+        if (viewName) {
+            const statsLayer = document.getElementById('mobile-stats-layer');
+            if (statsLayer) statsLayer.classList.add('m-layer-hidden');
+            document.body.style.overflow = ''; // Re-enable scroll
+        }
+        // 1. Desktop Nav Pill Handling
         document.querySelectorAll('.nav-pill span').forEach(el => el.classList.remove('active-view'));
         const activeEl = document.getElementById(`nav-${viewName}`);
         if (activeEl) activeEl.classList.add('active-view');
+
+        // 2. Mobile Dock Handling (The Obsidian Protocol)
+        if (window.innerWidth <= 768) {
+            const dockItems = document.querySelectorAll('.m-nav-item');
+            
+            // CLEANUP: Remove 'm-active' from EVERYTHING first
+            dockItems.forEach(item => item.classList.remove('m-active'));
+            
+            // APPLY: Add to the correct icon based on view
+            if (viewName === 'favorites') dockItems[0].classList.add('m-active');
+            else if (viewName === 'watchlist') dockItems[1].classList.add('m-active');
+            else if (viewName === 'home') dockItems[2].classList.add('m-active');
+            else if (viewName === 'watched') dockItems[3].classList.add('m-active');
+        }
     },
 
     handleError() {
         elements.app.innerHTML = `<div class="error-container"><h2>Connection Lost</h2><p>Please check your internet.</p><button class="retry-btn" onclick="app.goHome()">Retry</button></div>`;
     },
 
-  closeSettings() { elements.settingsModal.classList.remove('open'); },
+  closeSettings() { 
+        elements.settingsModal.classList.remove('open'); 
+        
+        // Disable Director Mode (Restores Dock & Search)
+        document.body.classList.remove('director-mode-active');
+
+        // Releases the scroll
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+    },
 
     getArchiveRange() {
         if (state.watched.length === 0) return { start: '????', end: '????' };
@@ -473,10 +584,7 @@ if (state.currentView !== 'home') {
         const modal = document.getElementById('settings-modal');
         const contentBox = document.getElementById('identity-content');
         const range = this.getArchiveRange();
-        
         if (!state.username) state.username = 'Operator';
-        
-        // 1. Calculate Rank
         const total = state.watched.length;
         let currentRank = RANKS[0];
         RANKS.forEach((r, index) => {
@@ -484,60 +592,75 @@ if (state.currentView !== 'home') {
             if (total >= r.limit && (!next || total < next.limit)) currentRank = r;
         });
         const rankText = currentRank.title.toUpperCase();
-
         const displayName = state.username === 'Operator' ? '' : state.username;
+        const isMobile = window.innerWidth <= 768;
 
-        contentBox.innerHTML = `
-            <div class="close-settings" onclick="app.closeSettings()">✕</div>
-            
-            <div class="identity-wrapper">
-                
-                <div class="ticket-section">
-                    <div class="landscape-ticket" id="goldenTicket">
-                        
-                        <div class="ticket-stub-part">
-                            <div class="stub-logo">KINO</div>
-                            <div class="stub-code">${rankText}</div>
-                        </div>
-
-                        <div class="ticket-main-part">
-                            <div class="ticket-top-label">OFFICIAL ARCHIVE PASS</div>
-                            
-                            <input type="text" class="ticket-name-input" 
-                                   value="${displayName}" 
-                                   placeholder="YOUR NAME"
-                                   maxlength="12" 
-                                   spellcheck="false"
-                                   autocomplete="off"
-                                   oninput="app.updateUsername(this.value)">
-
-                            <div class="ticket-data-row">
-                                <span class="data-item">
-                                    <span class="d-label">PREMIERE</span>
-                                    <span class="d-val">${range.start}</span>
-                                </span>
-                                <span class="data-sep">//</span>
-                                <span class="data-item">
-                                    <span class="d-label">SCREENING</span>
-                                    <span class="d-val">${range.end}</span>
-                                </span>
+        if (isMobile) {
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            contentBox.innerHTML = `
+                <div class="identity-wrapper">
+                    <h1 class="m-stats-header-main">Archive Pass</h1>
+                    <div class="ticket-section">
+                        <div class="landscape-ticket" id="goldenTicket">
+                            <div class="ticket-stub-part">
+                                <div class="stub-logo">KINO</div>
+                                <div class="stub-code">${rankText}</div>
                             </div>
+                            <div class="ticket-main-part">
+                                <div class="ticket-top-label">OFFICIAL ARCHIVE PASS</div>
+                                <input type="text" class="ticket-name-input" value="${displayName}" placeholder="YOUR NAME" maxlength="12" spellcheck="false" oninput="app.updateUsername(this.value)">
+                                <div class="ticket-data-row">
+                                    <span class="data-item"><span class="d-label">PREMIERE</span><span class="d-val">${range.start}</span></span>
+                                    <span class="data-sep">//</span>
+                                    <span class="data-item"><span class="d-label">SCREENING</span><span class="d-val">${range.end}</span></span>
+                                </div>
+                            </div>
+                            <div class="ticket-shimmer"></div>
                         </div>
-                        
-                        <div class="ticket-shimmer"></div>
+                    </div>
+                    <div class="mobile-access-tag">Access Granted: ${timestamp}</div>
+                </div>`;
+        } else {
+            contentBox.innerHTML = `
+                <div class="close-settings" onclick="app.closeSettings()">✕</div>
+                <div class="identity-wrapper">
+                    <div class="ticket-section">
+                        <div class="landscape-ticket" id="goldenTicket">
+                            <div class="ticket-stub-part">
+                                <div class="stub-logo">KINO</div>
+                                <div class="stub-code">${rankText}</div>
+                            </div>
+                            <div class="ticket-main-part">
+                                <div class="ticket-top-label">OFFICIAL ARCHIVE PASS</div>
+                                <input type="text" class="ticket-name-input" 
+                                       value="${displayName}" 
+                                       placeholder="YOUR NAME"
+                                       maxlength="12" 
+                                       spellcheck="false"
+                                       oninput="app.updateUsername(this.value)">
+                                <div class="ticket-data-row">
+                                    <span class="data-item"><span class="d-label">PREMIERE</span><span class="d-val">${range.start}</span></span>
+                                    <span class="data-sep">//</span>
+                                    <span class="data-item"><span class="d-label">SCREENING</span><span class="d-val">${range.end}</span></span>
+                                </div>
+                            </div>
+                            <div class="ticket-shimmer"></div>
+                        </div>
+                    </div>
+                    <div class="ghost-controls">
+                        <span class="cmd-btn" onclick="app.exportData()">BACKUP DATA</span>
+                        <span class="cmd-sep">|</span>
+                        <span class="cmd-btn" onclick="app.triggerRestore()">RESTORE DATA</span>
+                        <span class="cmd-sep">|</span>
+                        <span class="cmd-btn danger" onclick="app.resetTerminal()">RESET TERMINAL</span>
                     </div>
                 </div>
+            `;
+        }
 
-                <div class="ghost-controls">
-                    <span class="cmd-btn" onclick="app.exportData()">BACKUP DATA</span>
-                    <span class="cmd-sep">|</span>
-                    <span class="cmd-btn" onclick="app.triggerRestore()">RESTORE DATA</span>
-                    <span class="cmd-sep">|</span>
-                    <span class="cmd-btn danger" onclick="app.resetTerminal()">RESET TERMINAL</span>
-                </div>
-            </div>
-        `;
-
+        // Prevents background scroll
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
         modal.classList.add('open');
         this.addHoverEffect(); 
 
@@ -604,43 +727,49 @@ if (state.currentView !== 'home') {
     },
 
     openCredits() {
+        // 1. Push State for Back Gesture Support
+        window.history.pushState({overlay: true}, null, "");
+        
         const modal = document.getElementById('settings-modal');
         const contentBox = document.getElementById('identity-content');
+        const isMobile = window.innerWidth <= 768;
 
-        contentBox.innerHTML = `
-            <div class="close-settings" onclick="app.closeSettings()">✕</div>
-            
-            <div class="directors-note">
-                <div class="note-header">A Note from the Director</div>
-                <div class="note-sub">Official Archive Record</div>
-
-                <div class="note-body">
-                    <p>
-                        Stop scrolling for a moment and appreciate the view. 
-                        <b>I built this.</b> By bullying Gemini a little Ahem
-                    </p>
-                    <p>
-                        While other developers are out there crying over documentation and 'best practices,' 
-                        I was manually bullying pixels until they submitted to my will. 
-                        I didn't use a framework because I don't need 'help.' I need <i>control</i>.
-                    </p>
-                    <p>
-                        This project runs on 10% coding knowledge and 
-                        <span class="fuel-highlight">90% re-watching Ben 10 for the 50th time.</span>
-                    </p>
-                    <p style="font-size: 0.85rem; opacity: 0.8;">
-                        Honestly, I probably spent more time wishing I had an Omnitrix than I did debugging Hehehehe. 
-                        If the code breaks, it’s not a bug it’s just the watch entering Recalibration Mode.
-                    </p>
-                    <p>
-                        It's free. It's yours. Worship me later Mua.
-                    </p>
-                </div>
-
-                <div class="note-signature">PreritK.</div>
-                <div class="note-ps">(It's Hero Time!)</div>
+        // Shared Content (Friendly & Fun Version)
+        const noteContent = `
+            <div class="note-header">A Note from the Director</div>
+            <div class="note-sub">Official Archive Record</div>
+            <div class="note-body">
+                <p>Hi! Welcome to the Archive. I built this whole thing myself, mostly by pestering Gemini until the code finally worked (hehehe).</p>
+                <p>I didn't want to use boring templates. I wanted to make something that felt unique, so I placed every pixel by hand just for you.</p>
+                <p>To be honest, this project runs on 10% coding skills and <span class="fuel-highlight">90% re-watching Ben 10 for the 50th time.</span></p>
+                <p style="font-size: 0.85rem; opacity: 0.8;">If you see a bug, don't worry about it. It’s not an error; the Omnitrix is just entering Recalibration Mode.</p>
+                <p>Have fun exploring! Muaa.</p>
             </div>
+            <div class="note-signature">PreritK.</div>
+            <div class="note-ps">(It's Hero Time!)</div>
         `;
+
+        if (isMobile) {
+            // DIRECTOR MODE: Hide UI, Show Note + Back Button
+            document.body.classList.add('director-mode-active');
+            
+            contentBox.innerHTML = `
+                <div class="directors-note">
+                    ${noteContent}
+                </div>
+                <div class="director-back-btn" onclick="app.closeSettings()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+                </div>
+            `;
+        } else {
+            // Desktop Version
+            contentBox.innerHTML = `
+                <div class="close-settings" onclick="app.closeSettings()">✕</div>
+                <div class="directors-note">
+                    ${noteContent}
+                </div>
+            `;
+        }
 
         modal.classList.add('open');
         this.addHoverEffect(); 
@@ -648,10 +777,21 @@ if (state.currentView !== 'home') {
 
     // --- THE RECORD (Stats) ---
     openStats() {
+state.isHubOpen = false; 
+        document.getElementById('mobile-dock').classList.remove('m-hub-active');
+        document.getElementById('mobile-stats-layer').classList.remove('m-layer-hidden');
+        // -------------------------
+
+console.log("Stats Triggered!");
+
         window.history.pushState({overlay: true}, null, "");
-        const modal = document.getElementById('stats-modal');
-        const contentEl = modal.querySelector('.record-container');
+        const isMobile = window.innerWidth <= 768;
         
+        // Pick the right container based on device
+        const modal = document.getElementById(isMobile ? 'mobile-stats-layer' : 'stats-modal');
+const contentEl = isMobile ? modal : modal.querySelector('.record-container');
+        
+        // -- Data Processing --
         const total = state.watched.length;
         let movies = 0, series = 0, animeMovies = 0, animeSeries = 0;
         const genreCounts = {};
@@ -665,12 +805,8 @@ if (state.currentView !== 'home') {
             }
             const isAnime = (item.genre_ids && item.genre_ids.includes(16) && item.original_language === 'ja');
             const type = item.media_type || (item.title ? 'movie' : 'tv');
-
-            if (isAnime) {
-                if (type === 'movie') animeMovies++; else animeSeries++;
-            } else {
-                if (type === 'movie') movies++; else series++;
-            }
+            if (isAnime) { if (type === 'movie') animeMovies++; else animeSeries++; } 
+            else { if (type === 'movie') movies++; else series++; }
         });
 
         let currentRank = RANKS[0]; 
@@ -682,52 +818,73 @@ if (state.currentView !== 'home') {
         const sortedGenres = Object.entries(genreCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
         const topGenreCount = sortedGenres.length > 0 ? sortedGenres[0][1] : 1;
 
-        let html = `
-        <div class="record-pop-wrapper" style="width:100%;">
-            <div class="record-header-row">
-                <div class="record-title">THE RECORD</div>
-                <div class="legend-close" onclick="app.closeStats()">✕</div>
-            </div>
-            <div class="record-card">
-                <div class="record-left">
-                    <div class="big-stat-number">${total}</div>
-                    <div class="rank-badge-large" style="background:${currentRank.color}; box-shadow:0 0 20px ${currentRank.color}66;">
-                        ${currentRank.title}
-                    </div>
-                    <div class="breakdown-grid">
-                        <div class="stat-capsule"><span class="cap-label">Movies</span><span class="cap-val">${movies}</span></div>
-                        <div class="stat-capsule"><span class="cap-label">TV Series</span><span class="cap-val">${series}</span></div>
-                        <div class="stat-capsule"><span class="cap-label">Anime Movies</span><span class="cap-val">${animeMovies}</span></div>
-                        <div class="stat-capsule"><span class="cap-label">Anime TV</span><span class="cap-val">${animeSeries}</span></div>
-                    </div>
+        // -- Mobile Layout Injection --
+        if (isMobile) {
+            let genreHtml = sortedGenres.map(([name, count]) => `
+                <div class="m-vial-row">
+                    <div class="m-vial-info"><span>${name}</span><span>${count}</span></div>
+                    <div class="m-vial-track"><div class="m-vial-fill" data-percent="${(count / topGenreCount) * 100}"></div></div>
+                </div>
+            `).join('');
+
+            contentEl.innerHTML = `
+                <h1 class="m-stats-header-main">The Record</h1>
+                <div class="m-stats-ghost-total">${total}</div>
+                <div class="m-stats-rank-tablet">
+                    <div class="m-stats-rank-title">${currentRank.title}</div>
                 </div>
                 
-                <div class="record-right" style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                    <div class="section-label" style="text-align:center; margin-bottom:20px; width:100%;">Top 5 Genres</div>
-                    
-                    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.15); border-radius:16px; padding:30px 25px; width:100%;">
-        `;
+                <div class="m-stats-grid">
+                    <div class="m-stats-card"><span class="m-card-val">${movies}</span><span class="m-card-label">Movies</span></div>
+                    <div class="m-stats-card"><span class="m-card-val">${series}</span><span class="m-card-label">Series</span></div>
+                    <div class="m-stats-card"><span class="m-card-val">${animeMovies}</span><span class="m-card-label">Anime Movies</span></div>
+                    <div class="m-stats-card"><span class="m-card-val">${animeSeries}</span><span class="m-card-label">Anime Series</span></div>
+                </div>
+                <div class="m-vial-section">${genreHtml}</div>
+            `;
+            
+            modal.classList.remove('m-layer-hidden');
+            // Trigger Vial Animation
+            setTimeout(() => {
+                modal.querySelectorAll('.m-vial-fill').forEach(f => f.style.width = f.dataset.percent + '%');
+            }, 100);
 
-        if (sortedGenres.length === 0) {
-            html += `<p style="color:#666; text-align:center; margin:0;">No data recorded yet.</p>`;
         } else {
-            sortedGenres.forEach(([name, count], index) => {
-                const width = (count / topGenreCount) * 100;
-                const margin = index === sortedGenres.length - 1 ? '0' : '18px';
-                
-                html += `
-                    <div class="genre-bar-row" style="margin-bottom:${margin};">
-                        <div class="g-name">${name}</div>
-                        <div class="g-track"><div class="g-fill" style="width:${width}%; background:var(--accent-color);"></div></div>
-                        <div class="g-count">${count}</div>
+            // -- Keep existing Desktop Logic (The original code you had) --
+            let html = `
+            <div class="record-pop-wrapper" style="width:100%;">
+                <div class="record-header-row">
+                    <div class="record-title">THE RECORD</div>
+                    <div class="legend-close" onclick="app.closeStats()">✕</div>
+                </div>
+                <div class="record-card">
+                    <div class="record-left">
+                        <div class="big-stat-number">${total}</div>
+                        <div class="rank-badge-large" style="background:${currentRank.color};">${currentRank.title}</div>
+                        <div class="breakdown-grid">
+                            <div class="stat-capsule"><span class="cap-label">Movies</span><span class="cap-val">${movies}</span></div>
+                            <div class="stat-capsule"><span class="cap-label">TV Series</span><span class="cap-val">${series}</span></div>
+                            <div class="stat-capsule"><span class="cap-label">Anime Movies</span><span class="cap-val">${animeMovies}</span></div>
+                            <div class="stat-capsule"><span class="cap-label">Anime TV</span><span class="cap-val">${animeSeries}</span></div>
+                        </div>
                     </div>
-                `;
-            });
+                    <div class="record-right">
+                        <div class="section-label">Top 5 Genres</div>
+                        <div style="background:rgba(255,255,255,0.04); border-radius:16px; padding:30px;">
+                            ${sortedGenres.map(([name, count]) => `
+                                <div class="genre-bar-row">
+                                    <div class="g-name">${name}</div>
+                                    <div class="g-track"><div class="g-fill" style="width:${(count / topGenreCount) * 100}%;"></div></div>
+                                    <div class="g-count">${count}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            contentEl.innerHTML = html;
+            modal.classList.add('open');
         }
-        html += `</div></div></div></div>`;
-
-        contentEl.innerHTML = html;
-        modal.classList.add('open');
         document.body.style.overflow = 'hidden';
     },
 
@@ -746,113 +903,104 @@ if (state.currentView !== 'home') {
     openHelp() {
         window.history.pushState({overlay: true}, null, "");
         const ladderEl = document.getElementById('st-ladder');
-        const heartIcon = ICONS.heartFilled;
-        const watchIcon = ICONS.watchlist; 
-        const checkIcon = ICONS.watched;    
+        const isMobile = window.innerWidth <= 768;
 
-        const boxStyle = `display:flex; align-items:center; gap:15px; padding:12px 20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.15); border-radius:12px; width:100%; min-width:240px; transition:transform 0.2s;`;
+        if (isMobile) {
+            // ... (Your existing Mobile Code remains here) ...
+            let rankHtml = '';
+            RANKS.forEach((r) => {
+                const badgeStyle = `background:${r.color}; font-size:0.7rem; padding:6px 14px; border-radius:20px; font-weight:800; color:white; border:1px solid rgba(255,255,255,0.2);`;
+                rankHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <span style="${badgeStyle}">${r.title.toUpperCase()}</span>
+                        <span style="color:#888; font-family:monospace; font-weight:700; font-size:0.9rem;">${r.limit}+</span>
+                    </div>`;
+            });
 
-        let ladderHtml = `
-        <div class="legend-pop-wrapper">
-            <div class="legend-header-row">
-                <h1 class="legend-heading">The Archive Legend</h1>
-                <div class="legend-close" onclick="app.toggleRankLadder()">✕</div>
-            </div>
-            <div class="legend-grid">
-                
-                <div class="legend-card">
-                    <div class="card-label">Season Status</div>
-                    <div style="display:flex; flex-direction:column; gap:20px; width:100%; padding:0 20px;">
-                        <div style="display:flex; align-items:center; justify-content:space-between;">
-                            <div class="season-tab" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--accent-color); box-shadow:0 0 4px var(--accent-color); display:block;"></span> <span class="season-chevron"></span></div>
-                            <span style="color:#ddd; font-weight:600;">Watched</span>
+            ladderEl.innerHTML = `
+                <div class="legend-pop-wrapper">
+                    <div class="legend-header-row" style="margin-bottom: 40px; justify-content: center;">
+                        <h1 class="m-legend-heading-simple">Archive Legend</h1>
+                    </div>
+
+                    <div class="m-legend-stack">
+                        <div class="m-clean-card">
+                            <div class="m-card-label-simple">Rank Hierarchy</div>
+                            <div style="width:100%;">${rankHtml}</div>
                         </div>
-                        <div style="display:flex; align-items:center; justify-content:space-between;">
-                            <div class="season-tab" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--green-highlight); box-shadow:0 0 4px var(--green-highlight); display:block;"></span> <span class="season-chevron"></span></div>
-                            <span style="color:#ddd; font-weight:600;">Watching</span>
+
+                        <div class="m-clean-card">
+                            <div class="m-card-label-simple">Season Status</div>
+                            <div style="display:flex; flex-direction:column; gap:15px; width:100%;">
+                                <div style="display:flex; align-items:center; justify-content:space-between;">
+                                    <div class="season-tab active" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--accent-color); display:block;"></span> <span class="season-chevron"></span></div>
+                                    <span class="m-status-text">Watched</span>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between;">
+                                    <div class="season-tab active" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--green-highlight); display:block;"></span> <span class="season-chevron"></span></div>
+                                    <span class="m-status-text">Watching</span>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between;">
+                                    <div class="season-tab active" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--future-color); display:block;"></span> <span class="season-chevron"></span></div>
+                                    <span class="m-status-text">Watchlist</span>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display:flex; align-items:center; justify-content:space-between;">
-                            <div class="season-tab" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--future-color); box-shadow:0 0 4px var(--future-color); display:block;"></span> <span class="season-chevron"></span></div>
-                            <span style="color:#ddd; font-weight:600;">Watchlist</span>
+
+                        <div class="m-clean-card" style="align-items: center; text-align: center;">
+                            <div class="m-card-label-simple">Archive Pick</div>
+                            <div class="shuffle-btn" onclick="app.shuffleWatchlist()">Suggest</div>
+                            <p style="color:#666; font-size:0.8rem; line-height:1.5; font-weight:500; margin-top: 15px;">Can't decide? Let The Archive pick a random title from your watchlist.</p>
                         </div>
                     </div>
-                </div>
-
-                <div class="legend-card">
-                    <div class="card-label">Rank System</div>
-                    <div style="width:100%; display:flex; flex-direction:column; gap:10px; overflow-y:auto; padding-right:5px;">
-        `;
-        
-        RANKS.forEach((r) => {
-            const badgeStyle = `background:${r.color}; font-size:0.75rem; padding:6px 12px; border-radius:20px; font-weight:800; color:white; box-shadow:0 0 10px ${r.color}44; border:1px solid rgba(255,255,255,0.2);`;
-            ladderHtml += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <span style="${badgeStyle}">${r.title}</span><span style="color:#ccc; font-family:monospace; font-weight:700;">${r.limit}+</span>
-                </div>`;
-        });
-
-        ladderHtml += `</div></div>
-
-                <div style="display:flex; flex-direction:column; gap:30px; height:100%;">
                     
-                    <div class="legend-card" style="flex:1; min-width:auto; justify-content:center;">
-                        <div class="card-label" style="margin-bottom:15px;">Suggest</div>
-                        <div class="shuffle-btn" style="pointer-events:none; margin-bottom:15px;">Suggest</div>
-                        <p style="color:#888; font-size:0.85rem; line-height:1.5; text-align:center;">
-                            Can't decide? Go to your <b>Watchlist</b> and let The Archive pick a random title for you.
-                        </p>
-                    </div>
+                    <div style="height: 50px; width: 100%;"></div> </div>
+            `;
+        } else {
+            // --- PASTE THE NEW DESKTOP LOGIC HERE ---
+            const heartIcon = ICONS.heartFilled;
+            const watchIcon = ICONS.watchlist; 
+            const checkIcon = ICONS.watched; 
+            const boxStyle = `display:flex; align-items:center; gap:15px; padding:12px 20px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.15); border-radius:12px; width:100%; min-width:240px; transition:transform 0.2s;`;
 
-                    <div class="legend-card" style="flex:1; min-width:auto; justify-content:center;">
-                        <div class="card-label" style="margin-bottom:20px;">Actions</div>
-                        
-                        <div style="display:flex; flex-direction:column; gap:12px; width:fit-content; margin:0 auto;">
-                            
-                            <div style="${boxStyle}">
-                                <div class="card-icon-container active-red" 
-                                     style="opacity:1 !important; position:relative !important; top:auto !important; right:auto !important; flex-shrink:0; transform:scale(0.8); cursor:help;">
-                                     ${heartIcon}
-                                </div>
-                                <div style="display:flex; flex-direction:column;">
-                                    <span style="color:white; font-weight:700; font-size:0.9rem;">Favorites</span>
-                                    <span style="color:#888; font-size:0.75rem;">Your top picks</span>
-                                </div>
-                            </div>
-
-                            <div style="${boxStyle}">
-                                <div class="card-icon-container active-blue" 
-                                     style="opacity:1 !important; position:relative !important; top:auto !important; right:auto !important; flex-shrink:0; transform:scale(0.8); cursor:help;">
-                                     ${watchIcon}
-                                </div>
-                                <div style="display:flex; flex-direction:column;">
-                                    <span style="color:white; font-weight:700; font-size:0.9rem;">Watchlist</span>
-                                    <span style="color:#888; font-size:0.75rem;">Save for later</span>
-                                </div>
-                            </div>
-
-                            <div style="${boxStyle}">
-                                <div class="card-icon-container active-green" 
-                                     style="opacity:1 !important; position:relative !important; top:auto !important; right:auto !important; flex-shrink:0; transform:scale(0.8); cursor:help;">
-                                     ${checkIcon}
-                                </div>
-                                <div style="display:flex; flex-direction:column;">
-                                    <span style="color:white; font-weight:700; font-size:0.9rem;">Watched</span>
-                                    <span style="color:#888; font-size:0.75rem;">Mark as seen</span>
-                                </div>
-                            </div>
-
+            let ladderHtml = `<div class="legend-pop-wrapper">
+                <div class="legend-header-row"><h1 class="legend-heading">The Archive Legend</h1><div class="legend-close" onclick="app.toggleRankLadder()">✕</div></div>
+                <div class="legend-grid">
+                    <div class="legend-card">
+                        <div class="card-label">Season Status</div>
+                        <div style="display:flex; flex-direction:column; gap:20px; width:100%; padding:0 20px;">
+                            <div style="display:flex; align-items:center; justify-content:space-between;"><div class="season-tab" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--accent-color); box-shadow:0 0 4px var(--accent-color); display:block;"></span> <span class="season-chevron"></span></div><span style="color:#ddd; font-weight:600;">Watched</span></div>
+                            <div style="display:flex; align-items:center; justify-content:space-between;"><div class="season-tab" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--green-highlight); box-shadow:0 0 4px var(--green-highlight); display:block;"></span> <span class="season-chevron"></span></div><span style="color:#ddd; font-weight:600;">Watching</span></div>
+                            <div style="display:flex; align-items:center; justify-content:space-between;"><div class="season-tab" style="pointer-events:none;">Season <span class="status-dot" style="background:var(--future-color); box-shadow:0 0 4px var(--future-color); display:block;"></span> <span class="season-chevron"></span></div><span style="color:#ddd; font-weight:600;">Watchlist</span></div>
                         </div>
                     </div>
-
+                    <div class="legend-card">
+                        <div class="card-label">Rank System</div>
+                        <div style="width:100%; display:flex; flex-direction:column; gap:10px; overflow-y:auto; padding-right:5px;">`;
+            RANKS.forEach((r) => {
+                const badgeStyle = `background:${r.color}; font-size:0.75rem; padding:6px 12px; border-radius:20px; font-weight:800; color:white; box-shadow:0 0 10px ${r.color}44; border:1px solid rgba(255,255,255,0.2);`;
+                ladderHtml += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);"><span style="${badgeStyle}">${r.title}</span><span style="color:#ccc; font-family:monospace; font-weight:700;">${r.limit}+</span></div>`;
+            });
+            ladderHtml += `</div></div>
+                    <div style="display:flex; flex-direction:column; gap:30px; height:100%;">
+                        <div class="legend-card" style="flex:1; min-width:auto; justify-content:center;"><div class="card-label" style="margin-bottom:15px;">Suggest</div><div class="shuffle-btn" style="pointer-events:none; margin-bottom:15px;">Suggest</div><p style="color:#888; font-size:0.85rem; line-height:1.5; text-align:center;">Can't decide? Let The Archive pick a random title.</p></div>
+                        <div class="legend-card" style="flex:1; min-width:auto; justify-content:center;"><div class="card-label" style="margin-bottom:20px;">Actions</div>
+                            <div style="display:flex; flex-direction:column; gap:12px; width:fit-content; margin:0 auto;">
+                                <div style="${boxStyle}"><div class="card-icon-container active-red" style="opacity:1 !important; position:relative !important; transform:scale(0.8); cursor:help; top:0 !important; right:0 !important; margin:0 !important;">${heartIcon}</div><div><span style="color:white; font-weight:700; font-size:0.9rem;">Favorites</span></div></div>
+                                <div style="${boxStyle}"><div class="card-icon-container active-blue" style="opacity:1 !important; position:relative !important; transform:scale(0.8); cursor:help; top:0 !important; right:0 !important; margin:0 !important;">${watchIcon}</div><div><span style="color:white; font-weight:700; font-size:0.9rem;">Watchlist</span></div></div>
+                                <div style="${boxStyle}"><div class="card-icon-container active-green" style="opacity:1 !important; position:relative !important; transform:scale(0.8); cursor:help; top:0 !important; right:0 !important; margin:0 !important;">${checkIcon}</div><div><span style="color:white; font-weight:700; font-size:0.9rem;">Watched</span></div></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>`;
-
-        if(ladderEl) {
+            </div>`;
             ladderEl.innerHTML = ladderHtml;
-            ladderEl.classList.add('open');
-            document.body.style.overflow = 'hidden';
         }
+
+        ladderEl.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        this.addHoverEffect();
     },
 
     toggleRankLadder() {
@@ -862,9 +1010,11 @@ if (state.currentView !== 'home') {
         if (el.classList.contains('open')) {
             el.classList.remove('open');
             document.body.style.overflow = ''; 
+            document.documentElement.style.overflow = '';
         } else {
             el.classList.add('open');
             document.body.style.overflow = 'hidden'; 
+            document.documentElement.style.overflow = 'hidden';
         }
     },
 
@@ -1279,6 +1429,39 @@ if (details && details.runtime) {
     },
 
     renderListSection(listName) {
+        // --- MASTER CLEANUP: Close everything before navigating ---
+        
+        // 1. Close Search
+        this.closeMobileSearch();
+        
+        // 2. Close Hub
+        if (state.isHubOpen) this.toggleMobileHub();
+        
+        // 3. Close Director Mode / Settings
+        if (document.body.classList.contains('director-mode-active')) {
+            this.closeSettings(); 
+        }
+        elements.settingsModal.classList.remove('open');
+        
+        // 4. Close Stats / Legend
+        this.closeStats();
+        const ladder = document.getElementById('st-ladder');
+        if (ladder) {
+            ladder.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        // 5. CRITICAL: Close Movie Modal
+        if (elements.modal.classList.contains('open')) {
+            elements.modal.classList.remove('open');
+            document.body.classList.remove('modal-active');
+            
+            // Ensure dock comes back if we were deep in a movie
+            if (window.innerWidth <= 768) this.setMobileDockVisibility(true);
+        }
+        
+        // ---------------------------------------------------------
+
         window.history.pushState({view: listName}, null, "");
         this.transitionView(listName, () => {
             this.stopHeroTimer();
@@ -1287,10 +1470,9 @@ if (details && details.runtime) {
             if(elements.search) elements.search.value = '';
             
             // 1. Get List & Create Copy for Sorting
-            let list = [...state[listName]]; // Create a shallow copy so we don't mess up the saved order permanently
+            let list = [...state[listName]]; 
             
             // 2. Define Sort Logic
-            // We check a generic 'currentListSort' variable or default to 'default'
             const sortMode = state.currentListSort || 'default';
             
             if (sortMode === 'a-z') {
@@ -1302,18 +1484,13 @@ if (details && details.runtime) {
             } else if (sortMode === 'oldest') {
                 list.sort((a,b) => new Date(a.release_date || a.first_air_date || 0) - new Date(b.release_date || b.first_air_date || 0));
             }
-            // 'default' leaves it in the order you added them (index order)
 
-            // 3. Build Action Buttons (Suggest + Filter)
+            // 3. Build Action Buttons
             let actionHtml = '';
-            
-            // Suggest Button (Only for Watchlist)
             if (listName === 'watchlist' && list.length > 0) {
                 actionHtml += `<button class="shuffle-btn" onclick="app.shuffleWatchlist()" style="margin-right:10px;">Suggest</button>`;
             }
 
-            // The Filter Dropdown (Exact look as Search)
-            // We use a map to display the correct label based on current sort
             const labels = { 'default': 'Default', 'a-z': 'A-Z', 'rating': 'Rating', 'newest': 'Newest', 'oldest': 'Oldest' };
             const currentLabel = labels[sortMode] || 'Default';
 
@@ -1335,7 +1512,7 @@ if (details && details.runtime) {
 
             // 4. Render
             if(list.length === 0) {
-                elements.app.innerHTML = `<div style="padding: 100px 4% 10px 4%;"><h2 style="text-transform:capitalize; margin-bottom:10px;">${listName}</h2><p style="color:#666;">No items yet.</p></div>`;
+                elements.app.innerHTML = `<div class="list-page-header empty-list"><h2 style="text-transform:capitalize;">${listName}</h2><p style="color:#666;">No items yet.</p></div>`;
                 return;
             }
 
@@ -1343,8 +1520,8 @@ if (details && details.runtime) {
             const { anime, movies, series } = this.categorizeItems(list);
             
             elements.app.innerHTML = `
-                <div style="padding: 100px 4% 40px 4%; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px;">
-                    <h2 style="text-transform:capitalize; margin:0;">${listName}</h2>
+                <div class="list-page-header">
+                    <h2 style="text-transform:capitalize;">${listName}</h2>
                     <div style="display:flex; align-items:center;">${actionHtml}</div>
                 </div>
             `;
@@ -1453,7 +1630,22 @@ if (details && details.runtime) {
             state.currentView = 'search'; this.updateNav(null); this.renderSkeletons('search');
             api.search(q).then(async data => {
                 if(!data || !data.results) { this.handleError(); return; }
-                elements.app.innerHTML = `<div style="padding: 100px 4% 20px 4%; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px;"><h2 style="margin:0;">Results: "${q}"</h2><div class="custom-dropdown" id="searchSortDropdown"><div class="dropdown-btn" onclick="app.toggleSearchDropdown()"><span id="sortLabel">Sort: Default</span><span>▼</span></div><div class="dropdown-menu"><div class="dropdown-item" onclick="app.applySort('default', 'Sort: Default')">Default</div><div class="dropdown-item" onclick="app.applySort('rating', 'Rating (High)')">Rating (High)</div><div class="dropdown-item" onclick="app.applySort('year', 'Newest')">Newest</div><div class="dropdown-item" onclick="app.applySort('oldest', 'Oldest')">Oldest</div></div></div></div>`;
+                elements.app.innerHTML = `
+    <div class="list-page-header search-header">
+        <h2>Results: "${q}"</h2>
+        <div class="custom-dropdown" id="searchSortDropdown">
+            <div class="dropdown-btn" onclick="app.toggleSearchDropdown()">
+                <span id="sortLabel">Sort: Default</span>
+                <span>▼</span>
+            </div>
+            <div class="dropdown-menu">
+                <div class="dropdown-item" onclick="app.applySort('default', 'Sort: Default')">Default</div>
+                <div class="dropdown-item" onclick="app.applySort('rating', 'Rating (High)')">Rating (High)</div>
+                <div class="dropdown-item" onclick="app.applySort('year', 'Newest')">Newest</div>
+                <div class="dropdown-item" onclick="app.applySort('oldest', 'Oldest')">Oldest</div>
+            </div>
+        </div>
+    </div>`;
                 const grid = document.createElement('div');
                 grid.className = 'search-results-grid'; grid.id = 'search-grid';
                 elements.app.appendChild(grid);
@@ -1521,6 +1713,7 @@ if (details && details.runtime) {
         if (!isOpen) {
             window.history.pushState({modal: true}, null, "");
             document.body.classList.add('modal-active');
+            if (window.innerWidth <= 768) this.setMobileDockVisibility(false);
             document.body.style.overflow = 'hidden'; 
             document.documentElement.style.overflow = 'hidden';
         }
@@ -1686,12 +1879,32 @@ if (details && details.runtime) {
 
     updateModalButtons() {
         const id = state.currentModalItem.id;
-        const set = (btn, list) => { const el = document.getElementById(btn); if(state[list].some(i => i.id === id)) el.classList.add('active'); else el.classList.remove('active'); };
-        const isFav = state.favorites.some(i => i.id === id);
-        const favIcon = document.getElementById('btn-fav-icon');
+        const isMobile = window.innerWidth <= 768;
+
+        const set = (btnId, list, iconType, label) => { 
+            const el = document.getElementById(btnId); 
+            if(!el) return;
+            const isActive = state[list].some(i => i.id === id);
+            
+            if(isActive) el.classList.add('active'); 
+            else el.classList.remove('active'); 
+
+            // Restore original naming even on mobile
+            if(isMobile) {
+                el.innerHTML = ICONS[iconType] + `<span>${label}</span>`;
+            }
+        };
+
         const favBtn = document.getElementById('btn-fav');
-        if(isFav) { favBtn.classList.add('active'); favIcon.innerHTML = ICONS.heartFilled; } else { favBtn.classList.remove('active'); favIcon.innerHTML = ICONS.heartOutline; }
-        set('btn-watch', 'watchlist'); set('btn-watched', 'watched');
+        if(favBtn) {
+            const isFav = state.favorites.some(i => i.id === id);
+            favBtn.classList.toggle('active', isFav);
+            const icon = isFav ? ICONS.heartFilled : ICONS.heartOutline;
+            favBtn.innerHTML = icon + (isMobile ? "<span>Favorite</span>" : " Favorite");
+        }
+
+        set('btn-watch', 'watchlist', 'watchlist', 'Watchlist');
+        set('btn-watched', 'watched', 'watched', 'Watched');
     },
 
     toggleList(listName) {
@@ -1905,8 +2118,200 @@ if (details && details.runtime) {
    resetScroll() {
         document.body.style.overflow = '';
         document.documentElement.style.overflow = '';
+        if (window.innerWidth <= 768) this.setMobileDockVisibility(true);
     },
   
+
+/* =========================================
+       PHASE 3: OBSIDIAN MOBILE METHODS
+       ========================================= */
+
+    // 1. The Vanishing Dock Logic
+    setMobileDockVisibility(visible) {
+        const dock = document.getElementById('mobile-dock');
+        if (!dock) return;
+        if (visible) {
+            dock.classList.remove('m-dock-hidden');
+        } else {
+            dock.classList.add('m-dock-hidden');
+        }
+    },
+
+    
+    // 2. Double-Tap Home "Railgun" & Master Reset
+    handleMobileHomeTap() {
+        const now = Date.now();
+        const DOUBLE_TAP_THRESHOLD = 250;
+
+        if (now - state.lastHomeTap < DOUBLE_TAP_THRESHOLD) {
+            // DOUBLE TAP: Trigger Railgun Search
+            this.openMobileSearch();
+        } else {
+            // SINGLE TAP: THE MASTER RESET
+            // 1. Close Search
+            this.closeMobileSearch();
+            
+            // 2. Close Hub
+            if (state.isHubOpen) this.toggleMobileHub();
+            
+            // 3. Close Director Mode / Settings
+            if (document.body.classList.contains('director-mode-active')) {
+                this.closeSettings(); 
+            }
+            elements.settingsModal.classList.remove('open');
+            
+            // 4. Close Stats / Legend
+            this.closeStats();
+            const ladder = document.getElementById('st-ladder');
+            if (ladder) {
+                ladder.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+
+            // 5. Close Movie Modal
+            if (elements.modal.classList.contains('open')) {
+                elements.modal.classList.remove('open');
+                document.body.classList.remove('modal-active');
+                if (window.innerWidth <= 768) this.setMobileDockVisibility(true);
+            }
+
+            // 6. Go Home
+            if (state.currentView !== 'home') {
+                this.goHome();
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        
+            // Feedback Glow
+            const circle = document.querySelector('.m-home-core svg'); // Targeted SVG for glow
+            if (circle) {
+                circle.style.filter = 'drop-shadow(0 0 5px var(--accent-color))';
+                setTimeout(() => circle.style.filter = '', 300);
+            }
+        } 
+        state.lastHomeTap = now;
+    },
+
+    // 3. The Expansion Hub Toggle
+    /* --- The Morphing Hub Logic --- */
+    toggleMobileHub() {
+        const dock = document.getElementById('mobile-dock');
+        const hubStrip = document.getElementById('m-hub-strip');
+        
+        state.isHubOpen = !state.isHubOpen;
+
+        if (state.isHubOpen) {
+            // 1. Trigger the CSS height expansion
+            dock.classList.add('m-hub-active');
+            
+            // 2. Make the hub content interactable
+            if(hubStrip) hubStrip.classList.remove('hidden');
+            
+            // 3. Global listener: Close if user clicks anywhere else
+            const closeOnOutside = (e) => {
+                if (!dock.contains(e.target) && state.isHubOpen) {
+                    this.toggleMobileHub();
+                    document.removeEventListener('mousedown', closeOnOutside);
+                }
+            };
+            setTimeout(() => document.addEventListener('mousedown', closeOnOutside), 10);
+        } else {
+            // 1. Shrink the dock back down
+            dock.classList.remove('m-hub-active');
+            
+            // 2. Clear content after animation
+            setTimeout(() => {
+                if(hubStrip) hubStrip.classList.add('hidden');
+                // Only updateNav (which hides layers) if we aren't about to open one
+                if (!document.body.classList.contains('m-search-active')) {
+                    this.updateNav(state.currentView);
+                }
+            }, 400); 
+        }
+    },
+
+    // HELPER: Closes the Hub first, then launches the full-screen layer
+    morphAndOpen(action) {
+        // 1. Collapse the dock
+        this.toggleMobileHub();
+        
+        // 2. Open the layer after the dock starts shrinking
+        setTimeout(() => {
+            if (action === 'identity') app.openIdentity();
+            else if (action === 'stats') app.openStats(); 
+            else if (action === 'help') app.openHelp();
+        }, 350); 
+    },
+
+    // 4. Mobile Search Layer
+    openMobileSearch() {
+        const container = document.getElementById('m-search-container');
+        const input = document.getElementById('m-search-input');
+        const results = document.getElementById('mobile-search-overlay');
+        
+        // 1. If already open, treat this click as a CLOSE
+        if (container.classList.contains('m-search-open')) {
+            this.closeMobileSearch();
+            return;
+        }
+
+        // 2. OPEN Sequence
+        container.classList.add('m-search-open');
+        document.body.classList.add('m-search-active'); // Triggers the CSS blur
+        results.classList.remove('m-layer-hidden');
+        results.innerHTML = '<div id="m-search-results"></div>'; 
+        
+        setTimeout(() => input.focus(), 400);
+
+        // Wire up the search input logic
+        input.oninput = (e) => {
+            const q = e.target.value.trim();
+            const resultArea = document.getElementById('m-search-results');
+            if(q.length > 2) {
+                api.search(q).then(data => {
+                    resultArea.innerHTML = '';
+                    data.results.filter(i => i.poster_path).forEach(item => {
+                        const card = this.createCard(item);
+                        card.onclick = () => { 
+                            this.closeMobileSearch(); 
+                            this.openModal(item); 
+                        };
+                        resultArea.appendChild(card);
+                    });
+                });
+            } else {
+                resultArea.innerHTML = '';
+            }
+        };
+    },
+
+    closeMobileSearch(event) {
+        if (event) event.stopPropagation();
+        const container = document.getElementById('m-search-container');
+        const input = document.getElementById('m-search-input');
+        const resultsLayer = document.getElementById('mobile-search-overlay');
+        
+        container.classList.remove('m-search-open');
+        document.body.classList.remove('m-search-active');
+        resultsLayer.classList.add('m-layer-hidden');
+        input.value = '';
+        input.blur();
+    },
 };
 
 document.addEventListener('DOMContentLoaded', () => app.init());
+
+/* --- THE GYRO PROTOCOL (Mobile Tilt) --- */
+if (window.innerWidth <= 768) {
+    window.addEventListener('deviceorientation', (e) => {
+        const poster = document.querySelector('.hero-slide.active .hero-poster-box');
+        if (!poster) return;
+
+        // Beta is tilt front-to-back (-180 to 180)
+        // Gamma is tilt left-to-right (-90 to 90)
+        const tiltX = Math.max(-15, Math.min(15, (e.beta - 45) / 2)); // Adjusted for natural holding angle
+        const tiltY = Math.max(-15, Math.min(15, e.gamma / 2));
+
+        poster.style.transform = `perspective(1000px) rotateX(${-tiltX}deg) rotateY(${tiltY}deg) scale(1.05)`;
+    });
+}
