@@ -5,8 +5,13 @@
 const CONFIG = {
     apiKey: '2057f497acb30b4f59d331d432004256',
     apiBase: 'https://api.themoviedb.org/3',
-    imgBase: 'https://image.tmdb.org/t/p/w500',
-    imgOriginal: 'https://image.tmdb.org/t/p/original'
+    
+    // --- OPTIMIZED IMAGE TIERS ---
+    imgBase: 'https://image.tmdb.org/t/p/w500',       // Cards (Crisp but fast)
+    imgBlur: 'https://image.tmdb.org/t/p/w780',       // 720p (For blurred BGs - Performance Saver)
+    imgBackdrop: 'https://image.tmdb.org/t/p/w1280',  // 1080p (For Modal Backgrounds)
+    imgHero: 'https://image.tmdb.org/t/p/original',   // 4K (For Hero Main Poster only)
+    imgOriginal: 'https://image.tmdb.org/t/p/original' // 4K (For Share Cards)
 };
 
 const ICONS = {
@@ -256,20 +261,16 @@ const app = {
             });
         }
 
-        // 3. Legend / Stats: Click background to close
-        const mobileLayers = ['st-ladder', 'mobile-stats-layer'];
-        mobileLayers.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('click', (e) => {
-                    // If clicking the container itself (the backdrop), close it
-                    if (e.target === el) {
-                        if (id === 'st-ladder') this.toggleRankLadder();
-                        if (id === 'mobile-stats-layer') this.closeStats();
-                    }
-                });
-            }
-        });
+        // 3. Mobile Stats Layer: Click background to close
+        // (We removed 'st-ladder' from here because it has its own smarter logic below)
+        const statsLayer = document.getElementById('mobile-stats-layer');
+        if (statsLayer) {
+            statsLayer.addEventListener('click', (e) => {
+                if (e.target === statsLayer) {
+                    this.closeStats();
+                }
+            });
+        }
 
         // Add this: Wiring the Signature
 const sig = document.querySelector('.signature-wrapper');
@@ -281,8 +282,10 @@ if(sig) sig.addEventListener('click', () => this.openCredits());
                 clearTimeout(state.searchTimer);
                 const q = e.target.value.trim();
                 state.searchTimer = setTimeout(() => {
-                    if(q.length > 2) { this.stopHeroTimer(); this.renderSearchResults(q); }
-                    else if(q.length === 0) this.goHome();
+                    // Allow searching with just 1 letter
+if(q.length > 0) { this.stopHeroTimer(); this.renderSearchResults(q); }
+                    // Only go home if we are currently IN the search view
+else if(q.length === 0 && state.currentView === 'search') this.goHome();
                 }, 400);
             });
         }
@@ -303,53 +306,68 @@ if(sig) sig.addEventListener('click', () => this.openCredits());
             if (e.key === 'ArrowRight') this.manualHero('next');
         });
 
-        // Browser Back Button Support
-        // Browser Back Button Support (THE ULTIMATE MOBILE FIX)
+        // Browser Back Button Support (NATIVE APP FEEL)
         window.addEventListener('popstate', (e) => {
             if (window.innerWidth <= 768) this.setMobileDockVisibility(true);
 
-            // 1. PRIORITY: Close Search Overlay
+            // 1. Handle Mobile Search - Close with animation
             if (document.body.classList.contains('m-search-active')) {
-                this.closeMobileSearch();
+                this.closeMobileSearch(true); 
                 return;
             }
 
-            // 2. PRIORITY: Close Expanded Hub
+            // 2. Handle Hub - Close with animation
             if (state.isHubOpen) {
-                this.toggleMobileHub();
+                this.toggleMobileHub(true);
                 return;
             }
 
-            // 3. PRIORITY: Close Director Mode / Overlays
-            // This handles Settings, Stats, Legend, and the Director's Note
-            const overlays = [elements.settingsModal, document.getElementById('stats-modal'), document.getElementById('st-ladder')];
-            let overlayClosed = false;
+            // 3. Handle Overlays (Identity, Stats, Legend)
+            const overlays = [
+                elements.settingsModal, 
+                document.getElementById('stats-modal'), 
+                document.getElementById('st-ladder'),
+                document.getElementById('mobile-stats-layer'),
+                document.getElementById('mobile-legend-layer')
+            ];
             
+            let overlayClosed = false;
             overlays.forEach(ov => {
-                if (ov && ov.classList.contains('open')) {
+                // Check if open OR if it's a mobile layer that isn't hidden
+                if (ov && (ov.classList.contains('open') || (ov.id && ov.id.includes('mobile') && !ov.classList.contains('m-layer-hidden')))) {
                     ov.classList.remove('open');
+                    ov.classList.add('m-layer-hidden'); // Force slide down
                     overlayClosed = true;
                 }
             });
 
             if (overlayClosed) {
-                // Important: If we just closed the Director's Note, we must un-hide the UI
                 document.body.classList.remove('director-mode-active');
                 this.resetScroll();
                 return;
             }
 
-            // 4. PRIORITY: Close Movie Detail Modal
+            // 4. Handle Movie Details - Slide away
             if (elements.modal.classList.contains('open')) {
                 elements.modal.classList.remove('open');
                 document.body.classList.remove('modal-active');
-                this.resetScroll(); 
-                return; 
+                this.resetScroll();
+                if (window.innerWidth <= 768) this.setMobileDockVisibility(true);
+                return;
             }
 
-            // 5. Fallback: Return to Home
-            if (state.currentView !== 'home') {
-                this.goHome();
+            // 5. PAGE NAVIGATION (The Smooth Fix)
+            const destView = (e.state && e.state.view) ? e.state.view : 'home';
+            
+            if (destView !== state.currentView) {
+                this.transitionView(destView, () => {
+                    state.currentView = destView;
+                    this.updateNav(destView);
+                    
+                    // Render without pushing new history
+                    if (destView === 'home') this._loadHomeContent(true);
+                    else this.renderListSection(destView, true);
+                });
             }
         });
 
@@ -379,11 +397,16 @@ if(sig) sig.addEventListener('click', () => this.openCredits());
             });
         }
 
-        // Legend: Click Background to Close
+        // Legend: Click Background to Close (ROBUST VERSION)
         const ladder = document.getElementById('st-ladder');
         if (ladder) {
             ladder.addEventListener('click', (e) => {
-                if (e.target === ladder) this.toggleRankLadder();
+                // If the thing I clicked is NOT inside a card...
+                // AND it's not the Close button (which has its own click handler)...
+                // Then it must be the background (or gap). Close it.
+                if (!e.target.closest('.legend-card') && !e.target.closest('.legend-close')) {
+                    this.toggleRankLadder();
+                }
             });
         }
 
@@ -1088,21 +1111,24 @@ const contentEl = isMobile ? modal : modal.querySelector('.record-container');
         });
     },
 
-    createHeroSlide(item) {
-        // We define the variable as 'bg' here
-        const bg = item.backdrop_path ? CONFIG.imgOriginal + item.backdrop_path : '';
-        const poster = item.poster_path ? CONFIG.imgOriginal + item.poster_path : '';
+    createHeroSlide(item, isEager = false) {
+        // 1. Determine Load Priority (Eager for first slide, Lazy for others)
+        const loadAttr = isEager ? 'eager' : 'loading="lazy"';
+
+        const bg = item.backdrop_path ? CONFIG.imgBlur + item.backdrop_path : '';
+        const poster = item.poster_path ? CONFIG.imgHero + item.poster_path : '';
+        
         const title = item.title || item.name;
         const itemStr = JSON.stringify(item).replace(/"/g, '&quot;');
         const year = (item.release_date || item.first_air_date || '').substr(0,4);
-        const type = item.media_type || (item.title ? 'movie' : 'tv');
         
         const div = document.createElement('div');
         div.className = 'hero-slide';
 
+        // 2. Added ${loadAttr} to images
         div.innerHTML = `
             <div class="hero-bg-wrapper">
-                <img class="hero-img-blur" src="${bg}" alt="">
+                <img class="hero-img-blur" src="${bg}" ${loadAttr} alt="">
                 <div class="hero-vignette"></div>
             </div>
             
@@ -1110,7 +1136,7 @@ const contentEl = isMobile ? modal : modal.querySelector('.record-container');
 
             <div class="hero-layout-grid suggestion-one">
                 <div class="hero-poster-box" onclick="app.openModal(${itemStr})">
-                    <img src="${poster}" alt="${title}" onerror="this.src='assets/placeholder.png'">
+                    <img src="${poster}" ${loadAttr} alt="${title}" onerror="this.src='assets/placeholder.png'">
                 </div>
 
                 <div class="hero-info-stack">
@@ -1131,25 +1157,7 @@ const contentEl = isMobile ? modal : modal.querySelector('.record-container');
             </div>
         `;
 
-        // The Tilt Logic
-        const posterBox = div.querySelector('.hero-poster-box');
-        if (posterBox) {
-            posterBox.addEventListener('mousemove', (e) => {
-                const rect = posterBox.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                const rotateX = ((y - centerY) / centerY) * -3.5; 
-                const rotateY = ((x - centerX) / centerX) * 3.5;
-                posterBox.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
-            });
-
-            posterBox.addEventListener('mouseleave', () => {
-                posterBox.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)`;
-            });
-        }
-
+        // 3. REMOVED: The Mouse Tilt Event Listeners
         return div;
     },
 
@@ -1242,11 +1250,13 @@ if (details && details.runtime) {
         if(sentinel) container.appendChild(sentinel);
     },
 
-    async _loadHomeContent() {
+    async _loadHomeContent(fromHistory = false) {
         this.stopHeroTimer();
         state.currentView = 'home';
         this.updateNav('home'); 
-        this.renderSkeletons('home');
+        
+        // Only show skeletons if this is a fresh load, not a back navigation
+        if(!fromHistory) this.renderSkeletons('home');
         
         const [trending, topMovies, topAnime, topSeries] = await Promise.all([
             api.getTrendingAll(), api.getTopMovies(), api.getAnimeMixed(), api.getTopSeries()
@@ -1276,14 +1286,14 @@ if (details && details.runtime) {
     
     const activeSlide = document.querySelector('.hero-slide.active');
     // Only refresh if we are still on the first slide
-    if(activeSlide && state.heroIndex === 0) {
-          const updatedSlide = this.createHeroSlide(firstItem);
-          updatedSlide.classList.add('active');
-          activeSlide.replaceWith(updatedSlide); // Use replaceWith for a cleaner swap
-    }
-});
+            if(activeSlide && state.heroIndex === 0) {
+                  const updatedSlide = this.createHeroSlide(firstItem, true); // <--- TRUE (Eager Update)
+                  updatedSlide.classList.add('active');
+                  activeSlide.replaceWith(updatedSlide); 
+            }
+        });
             
-            const slide = this.createHeroSlide(firstItem);
+        const slide = this.createHeroSlide(firstItem, true); // <--- TRUE (Eager First Load)
             slide.classList.add('active');
             heroContainer.appendChild(slide);
             heroContainer.insertAdjacentHTML('beforeend', `<div class="hero-control prev-btn" onclick="app.manualHero('prev')">‹</div><div class="hero-control next-btn" onclick="app.manualHero('next')">›</div>`);
@@ -1428,22 +1438,25 @@ if (details && details.runtime) {
         }
     },
 
-    renderListSection(listName) {
+    renderListSection(listName, fromHistory = false) {
         // --- MASTER CLEANUP: Close everything before navigating ---
         
-        // 1. Close Search
-        this.closeMobileSearch();
+        // 1. Close Search (FORCE CLOSE: Pass 'true' to prevent history.back())
+        this.closeMobileSearch(true);
         
-        // 2. Close Hub
-        if (state.isHubOpen) this.toggleMobileHub();
+        // 2. Close Hub (FORCE CLOSE: Pass 'true')
+        if (state.isHubOpen) this.toggleMobileHub(true);
         
-        // 3. Close Director Mode / Settings
+        // 3. Clear any pending Search Timer (Prevent Ghost Redirects)
+        clearTimeout(state.searchTimer);
+        
+        // 4. Close Director Mode / Settings
         if (document.body.classList.contains('director-mode-active')) {
             this.closeSettings(); 
         }
         elements.settingsModal.classList.remove('open');
         
-        // 4. Close Stats / Legend
+        // 5. Close Stats / Legend
         this.closeStats();
         const ladder = document.getElementById('st-ladder');
         if (ladder) {
@@ -1451,7 +1464,7 @@ if (details && details.runtime) {
             document.body.style.overflow = '';
         }
 
-        // 5. CRITICAL: Close Movie Modal
+        // 6. CRITICAL: Close Movie Modal
         if (elements.modal.classList.contains('open')) {
             elements.modal.classList.remove('open');
             document.body.classList.remove('modal-active');
@@ -1462,11 +1475,15 @@ if (details && details.runtime) {
         
         // ---------------------------------------------------------
 
-        window.history.pushState({view: listName}, null, "");
+        // Only push a new history state if we are NOT coming from the back button
+        if (!fromHistory) window.history.pushState({view: listName}, null, "");
+
         this.transitionView(listName, () => {
             this.stopHeroTimer();
             state.currentView = listName;
             this.updateNav(listName); 
+            
+            // Safe clear of search input
             if(elements.search) elements.search.value = '';
             
             // 1. Get List & Create Copy for Sorting
@@ -1627,43 +1644,64 @@ if (details && details.runtime) {
 
     renderSearchResults(q) {
         this.transitionView('search', () => {
-            state.currentView = 'search'; this.updateNav(null); this.renderSkeletons('search');
+            state.currentView = 'search'; 
+            this.updateNav(null); 
+            this.renderSkeletons('search');
+            
             api.search(q).then(async data => {
                 if(!data || !data.results) { this.handleError(); return; }
+                
+                // 1. Setup the Header
                 elements.app.innerHTML = `
-    <div class="list-page-header search-header">
-        <h2>Results: "${q}"</h2>
-        <div class="custom-dropdown" id="searchSortDropdown">
-            <div class="dropdown-btn" onclick="app.toggleSearchDropdown()">
-                <span id="sortLabel">Sort: Default</span>
-                <span>▼</span>
-            </div>
-            <div class="dropdown-menu">
-                <div class="dropdown-item" onclick="app.applySort('default', 'Sort: Default')">Default</div>
-                <div class="dropdown-item" onclick="app.applySort('rating', 'Rating (High)')">Rating (High)</div>
-                <div class="dropdown-item" onclick="app.applySort('year', 'Newest')">Newest</div>
-                <div class="dropdown-item" onclick="app.applySort('oldest', 'Oldest')">Oldest</div>
-            </div>
-        </div>
-    </div>`;
+                <div class="list-page-header search-header">
+                    <h2>Results: "${q}"</h2>
+                    <div class="custom-dropdown" id="searchSortDropdown">
+                        <div class="dropdown-btn" onclick="app.toggleSearchDropdown()">
+                            <span id="sortLabel">Sort: Default</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="dropdown-menu">
+                            <div class="dropdown-item" onclick="app.applySort('default', 'Sort: Default')">Default</div>
+                            <div class="dropdown-item" onclick="app.applySort('rating', 'Rating (High)')">Rating (High)</div>
+                            <div class="dropdown-item" onclick="app.applySort('year', 'Newest')">Newest</div>
+                            <div class="dropdown-item" onclick="app.applySort('oldest', 'Oldest')">Oldest</div>
+                        </div>
+                    </div>
+                </div>`;
+                
                 const grid = document.createElement('div');
-                grid.className = 'search-results-grid'; grid.id = 'search-grid';
+                grid.className = 'search-results-grid'; 
+                grid.id = 'search-grid';
                 elements.app.appendChild(grid);
 
                 const topResult = data.results[0];
+                
+                // Get standard search results (Movies/TV) excluding the Person objects themselves
+                let directMatches = data.results.filter(item => (item.media_type==='movie'||item.media_type==='tv'));
+
                 if (topResult && topResult.media_type === 'person') {
                     const credits = await api.getPersonCredits(topResult.id);
                     if (credits) {
                         let works = (topResult.known_for_department === 'Directing') ? credits.crew.filter(w => w.job === 'Director') : credits.cast;
-                        works = works.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
-                        works.sort((a,b) => b.popularity - a.popularity);
-                        state.searchResultItems = works;
+                        
+                        // FIX: Combine Person's Works + Direct Search Matches
+                        let combined = [...works, ...directMatches];
+
+                        // Deduplicate (Remove items that appear in both lists)
+                        combined = combined.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
+                        
+                        // Sort by Popularity (Ensures the main movie "PK" floats to the top if it's popular)
+                        combined.sort((a,b) => b.popularity - a.popularity);
+
+                        state.searchResultItems = combined;
                         state.searchRenderCount = 0;
                         this.renderSearchGridChunk(); 
                         return;
                     }
                 }
-                state.searchResultItems = data.results.filter(item => (item.media_type==='movie'||item.media_type==='tv'));
+                
+                // Normal Behavior (No Person Found)
+                state.searchResultItems = directMatches;
                 state.searchRenderCount = 0;
                 this.renderSearchGridChunk();
             });
@@ -1734,7 +1772,8 @@ if (details && details.runtime) {
         });
         state.activeSeason = null;
 
-        const bg = item.backdrop_path ? CONFIG.imgOriginal + item.backdrop_path : '';
+        // QUALITY: Use 4K (Original) for the Modal Backdrop because 1080p wasn't enough
+    const bg = item.backdrop_path ? CONFIG.imgOriginal + item.backdrop_path : '';
         const backdropImg = document.getElementById('m-backdrop');
         backdropImg.src = bg || ''; 
         backdropImg.style.opacity = bg ? '1' : '0';
@@ -1792,8 +1831,7 @@ if (details && details.runtime) {
             const year = (item.release_date || item.first_air_date || '').substr(0,4);
             const type = item.media_type || (item.title ? 'movie' : 'tv');
             
-            // 1. Get Details for Meta Tags (Runtime, Genres, Rating)
-            // We fetch details again to ensure we have genres and runtime
+            // 1. Get Details for Meta Tags
             const details = await api.getDetails(type, item.id);
             const ageRating = await api.getAgeRating(type, item.id);
             
@@ -1805,13 +1843,13 @@ if (details && details.runtime) {
                 runtimeStr = `${details.number_of_seasons} Season${details.number_of_seasons > 1 ? 's' : ''}`;
             }
 
-            // Format Genres (Top 2)
+            // Format Genres
             let genreStr = '';
             if (details.genres && details.genres.length > 0) {
                 genreStr = details.genres.slice(0, 2).map(g => g.name).join(' • ');
             }
 
-            // 2. High Res Poster
+            // 2. High Res Poster URL
             const posterPath = item.poster_path ? (CONFIG.imgBase.replace('w500', 'original') + item.poster_path) : '';
 
             // 3. Populate DOM
@@ -1828,22 +1866,31 @@ if (details && details.runtime) {
             
             document.getElementById('sc-genre-text').innerText = genreStr;
 
-            // 4. Load Image
+            // 4. Load Image SAFE (THE GRAY POSTER FIX)
             const imgEl = document.getElementById('sc-poster-img');
+            
+            // CRITICAL: Force anonymous mode for canvas capture
+            imgEl.crossOrigin = "anonymous"; 
+            
             await new Promise((resolve, reject) => {
-                if(!posterPath) resolve();
+                if(!posterPath) { resolve(); return; }
+                
                 imgEl.onload = resolve;
                 imgEl.onerror = resolve;
-                imgEl.src = posterPath;
+                
+                // TRICK: Add a random timestamp to the URL (?t=...)
+                // This forces the browser to ignore the cache and fetch a fresh image
+                // with the correct CORS headers allowed for screenshots.
+                imgEl.src = posterPath + '?t=' + new Date().getTime(); 
             });
 
             // 5. Capture at 4K
             container.style.visibility = 'visible'; 
-            await new Promise(r => setTimeout(r, 200)); // Buffer for rendering large DOM
+            await new Promise(r => setTimeout(r, 200)); 
 
             const canvas = await html2canvas(document.getElementById('share-card'), { 
                 useCORS: true, 
-                scale: 2, // 1080px * 2 = 2160px Width (4K)
+                scale: 2, 
                 backgroundColor: '#050505', 
                 logging: false 
             });
@@ -1855,9 +1902,20 @@ if (details && details.runtime) {
                 const filename = `KINO_${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
                 const file = new File([blob], filename, { type: 'image/png' });
 
+                // --- NEW GOOGLE LINK GENERATION ---
+                const googleLink = `https://www.google.com/search?q=${encodeURIComponent("Watch " + title + " " + year)}`;
+
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try { await navigator.share({ files: [file], title: title, text: `Check out ${title} on Kino.` }); } catch (e) {}
+                    try { 
+                        await navigator.share({ 
+                            files: [file], 
+                            title: title, 
+                            text: `Check it out`, // The text you requested
+                            url: googleLink       // The direct clickable link
+                        }); 
+                    } catch (e) {}
                 } else {
+                    // Desktop Fallback
                     const link = document.createElement('a'); 
                     link.download = filename; 
                     link.href = URL.createObjectURL(blob);
@@ -2024,7 +2082,8 @@ if (details && details.runtime) {
             const div = document.createElement('div');
             div.className = 'collection-card';
             div.onclick = () => { api.getDetails('movie', p.id).then(fullItem => { app.openModal(fullItem || p); }); };
-            div.innerHTML = `<img src="${img}" class="c-poster" onerror="this.style.opacity='0.3'"><div class="c-info"><div class="c-title">${p.title}</div><div class="c-year">${p.release_date.substr(0,4)}</div></div>`;
+            // Added loading="lazy" for performance
+div.innerHTML = `<img src="${img}" class="c-poster" loading="lazy" onerror="this.style.opacity='0.3'"><div class="c-info"><div class="c-title">${p.title}</div><div class="c-year">${p.release_date.substr(0,4)}</div></div>`;
             list.appendChild(div);
         });
     },
@@ -2042,8 +2101,10 @@ if (details && details.runtime) {
                 const isWatched = state.tvProgress[tvId][seasonNum].watchedEpisodes.includes(ep.id);
                 const div = document.createElement('div');
                 div.className = 'episode-card';
+                // OPTIMIZATION: Use w500 (Standard) for episode thumbnails
                 const img = ep.still_path ? CONFIG.imgBase + ep.still_path : '';
-                const imgHtml = img ? `<img src="${img}" class="ep-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
+                // Added loading="lazy" for performance
+const imgHtml = img ? `<img src="${img}" class="ep-img" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">` : '';
                 const placeholderHtml = `<div class="ep-img" style="${img ? 'display:none;' : 'display:flex;'} align-items:center; justify-content:center; color:#555; font-size:0.8rem; font-weight:700;">KINO</div>`;
                 const runtime = ep.runtime ? `${ep.runtime}m` : '';
                 div.onclick = function() { app.toggleEpisode(tvId, seasonNum, ep.id, this.querySelector('.ep-check')); };
@@ -2192,41 +2253,49 @@ if (details && details.runtime) {
         state.lastHomeTap = now;
     },
 
-    // 3. The Expansion Hub Toggle
-    /* --- The Morphing Hub Logic --- */
-    toggleMobileHub() {
+    /* --- The Morphing Hub Logic (State Aware) --- */
+    toggleMobileHub(forceClose = false) {
         const dock = document.getElementById('mobile-dock');
         const hubStrip = document.getElementById('m-hub-strip');
         
-        state.isHubOpen = !state.isHubOpen;
-
-        if (state.isHubOpen) {
-            // 1. Trigger the CSS height expansion
-            dock.classList.add('m-hub-active');
+        // CASE 1: FORCE CLOSE (Triggered by Back Button/Gesture)
+        if (forceClose) {
+            state.isHubOpen = false;
+            dock.classList.remove('m-hub-active');
             
-            // 2. Make the hub content interactable
+            // Clean up content after animation
+            setTimeout(() => {
+                if(hubStrip) hubStrip.classList.add('hidden');
+                if (!document.body.classList.contains('m-search-active')) {
+                    this.updateNav(state.currentView);
+                }
+            }, 400);
+            return;
+        }
+
+        // CASE 2: USER INTERACTION (Clicking the Burger)
+        if (state.isHubOpen) {
+            // If it's open and you click toggle, we simulate a "Back" action
+            // This triggers the 'popstate' listener above, which runs the closing animation.
+            window.history.back();
+        } else {
+            // OPENING: Push a state so the Back Button has something to catch
+            window.history.pushState({hub: true}, null, "");
+            state.isHubOpen = true;
+            
+            // Trigger Expansion
+            dock.classList.add('m-hub-active');
             if(hubStrip) hubStrip.classList.remove('hidden');
             
-            // 3. Global listener: Close if user clicks anywhere else
+            // Global listener: Close if user clicks outside
             const closeOnOutside = (e) => {
                 if (!dock.contains(e.target) && state.isHubOpen) {
-                    this.toggleMobileHub();
+                    // Clicked outside? Go Back.
+                    window.history.back();
                     document.removeEventListener('mousedown', closeOnOutside);
                 }
             };
             setTimeout(() => document.addEventListener('mousedown', closeOnOutside), 10);
-        } else {
-            // 1. Shrink the dock back down
-            dock.classList.remove('m-hub-active');
-            
-            // 2. Clear content after animation
-            setTimeout(() => {
-                if(hubStrip) hubStrip.classList.add('hidden');
-                // Only updateNav (which hides layers) if we aren't about to open one
-                if (!document.body.classList.contains('m-search-active')) {
-                    this.updateNav(state.currentView);
-                }
-            }, 400); 
         }
     },
 
@@ -2249,32 +2318,60 @@ if (details && details.runtime) {
         const input = document.getElementById('m-search-input');
         const results = document.getElementById('mobile-search-overlay');
         
-        // 1. If already open, treat this click as a CLOSE
+        // 1. If already open, clicking again = Close (Go Back)
         if (container.classList.contains('m-search-open')) {
-            this.closeMobileSearch();
+            window.history.back();
             return;
         }
 
-        // 2. OPEN Sequence
+        // 2. OPENING: Push State
+        window.history.pushState({search: true}, null, "");
+
         container.classList.add('m-search-open');
-        document.body.classList.add('m-search-active'); // Triggers the CSS blur
+        document.body.classList.add('m-search-active'); 
         results.classList.remove('m-layer-hidden');
         results.innerHTML = '<div id="m-search-results"></div>'; 
         
         setTimeout(() => input.focus(), 400);
 
-        // Wire up the search input logic
+        // Input Logic...
         input.oninput = (e) => {
             const q = e.target.value.trim();
             const resultArea = document.getElementById('m-search-results');
-            if(q.length > 2) {
-                api.search(q).then(data => {
+            
+            if(q.length > 0) {
+                api.search(q).then(async data => {
+                    if(!data || !data.results) return;
                     resultArea.innerHTML = '';
-                    data.results.filter(i => i.poster_path).forEach(item => {
+
+                    const topResult = data.results[0];
+                    let finalResults = data.results.filter(i => i.media_type === 'movie' || i.media_type === 'tv');
+
+                    // --- SMART PERSON LOGIC (Ported from Desktop) ---
+                    if (topResult && topResult.media_type === 'person') {
+                        const credits = await api.getPersonCredits(topResult.id);
+                        if (credits) {
+                            let works = (topResult.known_for_department === 'Directing') ? credits.crew.filter(w => w.job === 'Director') : credits.cast;
+                            
+                            // Combine Person's Works + Normal Search Results
+                            let combined = [...works, ...finalResults];
+                            
+                            // Remove Duplicates
+                            combined = combined.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
+                            
+                            // Sort by Popularity
+                            combined.sort((a,b) => b.popularity - a.popularity);
+                            
+                            finalResults = combined;
+                        }
+                    }
+                    // -----------------------------------------------
+
+                    finalResults.filter(i => i.poster_path).forEach(item => {
                         const card = this.createCard(item);
                         card.onclick = () => { 
-                            this.closeMobileSearch(); 
-                            this.openModal(item); 
+                            this.closeMobileSearch(true); 
+                            setTimeout(() => this.openModal(item), 50); 
                         };
                         resultArea.appendChild(card);
                     });
@@ -2285,9 +2382,19 @@ if (details && details.runtime) {
         };
     },
 
-    closeMobileSearch(event) {
-        if (event) event.stopPropagation();
+    closeMobileSearch(forceClose = false) {
         const container = document.getElementById('m-search-container');
+        
+        // If not open, do nothing (prevents accidental history manipulation)
+        if (!container.classList.contains('m-search-open')) return;
+
+        // If called by UI click (X button), use History Back to keep sync
+        if (!forceClose) {
+            window.history.back();
+            return;
+        }
+
+        // The Actual Animation Logic
         const input = document.getElementById('m-search-input');
         const resultsLayer = document.getElementById('mobile-search-overlay');
         
@@ -2300,18 +2407,3 @@ if (details && details.runtime) {
 };
 
 document.addEventListener('DOMContentLoaded', () => app.init());
-
-/* --- THE GYRO PROTOCOL (Mobile Tilt) --- */
-if (window.innerWidth <= 768) {
-    window.addEventListener('deviceorientation', (e) => {
-        const poster = document.querySelector('.hero-slide.active .hero-poster-box');
-        if (!poster) return;
-
-        // Beta is tilt front-to-back (-180 to 180)
-        // Gamma is tilt left-to-right (-90 to 90)
-        const tiltX = Math.max(-15, Math.min(15, (e.beta - 45) / 2)); // Adjusted for natural holding angle
-        const tiltY = Math.max(-15, Math.min(15, e.gamma / 2));
-
-        poster.style.transform = `perspective(1000px) rotateX(${-tiltX}deg) rotateY(${tiltY}deg) scale(1.05)`;
-    });
-}

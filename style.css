@@ -533,18 +533,27 @@ body.modal-active #control-deck {
     /* No more translateX nudges needed! Flex-center handles the balance. */
 }
 
-/* LEFT SIDE: The Tilting Poster */
+/* LEFT SIDE: The Popup Poster (Optimized) */
 .hero-poster-box {
-    width: 380px; /* Slightly refined size for better balance */
+    width: 380px; 
     aspect-ratio: 2/3;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 30px 100px rgba(0,0,0,0.8);
     border: 1px solid rgba(255,255,255,0.1);
-    transform-style: preserve-3d;
-    transition: transform 0.1s ease-out;
+    
+    /* Native CSS Hover transition (No JS needed) */
+    transition: transform 0.4s var(--ease-lux), box-shadow 0.4s var(--ease-lux);
     cursor: pointer;
-    flex-shrink: 0; /* Prevents poster from squishing */
+    flex-shrink: 0; 
+    will-change: transform; /* Hint to GPU */
+}
+
+/* The Simple Popup Effect */
+.hero-poster-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 50px 120px rgba(0,0,0,1);
+    border-color: rgba(255,255,255,0.3);
 }
 
 .hero-poster-box img {
@@ -1367,30 +1376,46 @@ body.modal-active #control-deck {
     }
     .mobile-only { display: block; }
 
-    /* 3. Mobile Header */
+    /* 3. Mobile Header (NOTCH FIX) */
     #mobile-header {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
-        /* The Balanced Choice: 110px */
-        height: 110px; 
+        
+        /* Auto height allows it to grow with the notch */
+        height: auto;
+        min-height: 110px; 
+
         display: flex;
-        align-items: flex-start; 
-        padding-top: 24px; 
+        align-items: center; /* Vertically center the logo */
         justify-content: space-between;
+        
+        /* CRITICAL FIX: Adds the Notch height to your top padding */
+        padding-top: max(20px, env(safe-area-inset-top));
+        padding-bottom: 15px;
         padding-left: 20px;
         padding-right: 20px;
+        
         z-index: 9000;
         
-        /* THE ULTIMATE BLEND: Deepest at the top, smooth falloff */
+        /* Solid start to cover the scrolling cards behind the status bar */
         background: linear-gradient(to bottom, 
             #050505 0%, 
-            rgba(5, 5, 5, 0.98) 35%, 
-            rgba(5, 5, 5, 0.7) 65%, 
+            #050505 40%, /* Solid black cover for the notch area */
+            rgba(5, 5, 5, 0.95) 60%, 
             transparent 100%);
         
         pointer-events: none;
+
+        /* Enable clicks for children */
+        .m-logo, 
+        #m-search-container, 
+        .m-search-trigger, 
+        .m-search-bar input {
+            pointer-events: auto !important;
+        }
+    }
 
         /* THE FIX: Re-enable touch for the header icons */
     .m-logo, 
@@ -1399,7 +1424,7 @@ body.modal-active #control-deck {
     .m-search-bar input {
         pointer-events: auto !important;
     }
-    }
+  
 
 /* When search is active, force everything to the right edge */
 .m-search-active #mobile-header {
@@ -1498,9 +1523,14 @@ body.modal-active #control-deck {
     #mobile-search-overlay {
         position: fixed; inset: 0;
         width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.7); /* DEEP DARKNESS */
+        background: rgba(0, 0, 0, 0.85); /* Slightly darker for better contrast */
         backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         z-index: 7400;
+        
+        /* FIX: Increased padding to 140px to clear the header + notch comfortably */
+        padding: 140px 6% 100px 6%; 
+        overflow-y: auto;
+        
         opacity: 0; pointer-events: none;
         transition: opacity 0.4s ease;
     }
@@ -1866,13 +1896,23 @@ body.modal-active #control-deck {
     }
 
     /* 8. Full-Screen Overlay Layers (Search, Stats, etc.) */
-    [id*="-overlay"], [id*="-layer"] {
-        position: fixed; inset: 0;
-        background: #050505; z-index: 8000;
-        padding: 80px 6% 20px 6%;
-        overflow-y: auto;
-        transition: transform 0.4s var(--ease-lux), opacity 0.3s ease;
-    }
+[id*="-overlay"], [id*="-layer"] {
+    position: fixed; inset: 0;
+    background: #050505; z-index: 8000;
+    padding: 80px 6% 20px 6%;
+    overflow-y: auto;
+    
+    /* Ensure transition applies to both Entering and Exiting */
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+    will-change: transform, opacity;
+}
+
+/* The Closed State - Forces the slide down animation */
+.m-layer-hidden {
+    transform: translateY(100%) !important;
+    opacity: 0 !important; 
+    pointer-events: none !important;
+}
 
     .m-layer-hidden {
         transform: translateY(100%);
@@ -2622,4 +2662,94 @@ body.modal-active #control-deck {
         transform: translateX(1px); /* Visual center correction */
     }
 
+/* =========================================
+       MOBILE GHOST MODE (Auto-Hide UI)
+       ========================================= */
+    
+    /* 1. Hide the Bottom Dock when idle */
+    body.ui-idle #mobile-dock {
+        opacity: 0;
+        transform: translate(-50%, 20px); /* Slide down */
+        pointer-events: none;
+    }
+
+    /* 2. Hide the Search Trigger (Top Right) when idle */
+    body.ui-idle .m-search-trigger {
+        opacity: 0;
+        transform: scale(0.8); /* Shrink slightly */
+        pointer-events: none;
+    }
+
+    /* 3. Keep them visible if a menu/modal is open */
+    body.m-search-active #mobile-dock,
+    body.m-hub-active #mobile-dock,
+    body.modal-active #mobile-dock {
+        opacity: 1 !important;
+        transform: translate(-50%, 0) !important;
+        pointer-events: auto !important;
+    }
+
+/* =========================================
+       MOBILE CINEMATIC TRANSITIONS (The Premium Fix)
+       ========================================= */
+
+    /* 1. Forward Navigation (Home -> Watchlist) */
+    .page-exit { 
+        animation: mobileCinemaOut 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important; 
+        z-index: 1;
+    }
+    .page-enter { 
+        animation: mobileCinemaIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important; 
+        z-index: 2;
+    }
+
+    /* 2. Backward Navigation (Back Button) */
+    /* We use the SAME animation for consistency, or a slight variation if preferred. 
+       Using the same depth effect usually feels more "expensive" and clean. */
+    .page-exit-back { 
+        animation: mobileCinemaOut 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important; 
+        z-index: 1;
+    }
+    .page-enter-back { 
+        animation: mobileCinemaIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important; 
+        z-index: 2;
+    }
+
+    /* 3. Modal Opening (Pop Up from Bottom) - Kept this as it works well for modals */
+    .modal-backdrop.open .modal-content {
+        animation: mobileModalUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* --- KEYFRAMES (The "Soo Good" Desktop Feel) --- */
+
+    @keyframes mobileCinemaOut {
+        from { 
+            opacity: 1; 
+            transform: scale(1); 
+            filter: blur(0px); 
+        }
+        to { 
+            opacity: 0; 
+            transform: scale(0.92); /* Shrinks slightly into background */
+            filter: blur(8px);      /* Heavy cinematic blur */
+        }
+    }
+
+    @keyframes mobileCinemaIn {
+        from { 
+            opacity: 0; 
+            transform: scale(1.08); /* Starts slightly zoomed in */
+            filter: blur(12px);     /* Starts blurry */
+        }
+        to { 
+            opacity: 1; 
+            transform: scale(1);    /* Lands perfectly */
+            filter: blur(0px); 
+        }
+    }
+
+    @keyframes mobileModalUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
 }

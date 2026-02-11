@@ -1,84 +1,83 @@
-# KINO | The Archive v1.5.1 🎬
+# KINO | The Archive v1.5.2 🎬
 
-> "I didn't use a framework because I don't need 'help.' I need control."
+> "Performance is not a feature. It is the Director's cut."
 
-**KINO** is not just a movie tracker. It’s a high-performance, Glassmorphic vault for your cinematic history. Built with a "Directorial" mindset, it trades boring standard UI for a high-contrast, Noir-Crimson aesthetic that looks better than whatever you're currently using.
+**KINO** is a high-performance, glassmorphic vault for your cinematic history. Built with a "Directorial" mindset, it trades boring standard UI for a high-contrast, Noir-Crimson aesthetic that looks better than whatever you're currently using.
 
-It runs on **10% coding knowledge**, **90% Ben 10 re-runs**, and a healthy amount of **bullying AI** until the pixels surrendered.
-
----
-
-## 📱 v1.5.1: The "Obsidian Protocol" Update
-
-In v1.0, I explicitly stated that *KINO* was for the big screen. But then I looked at my phone, saw a broken UI, and my ego couldn't handle it. So, after another 48-hour marathon of *Ben 10: Alien Force* and aggressively bullying Gemini into understanding touch events, I am releasing **The Obsidian Protocol**.
-
-The Archive now fits in your pocket. And honestly? It might look better there than on your desktop.
+It runs on **Vanilla JS**, **pure spite**, and **bullying AI** until the code runs at 60fps.
 
 ---
 
-## ⚡ Features (The High-Resolution Ego)
+## 🔋 v1.5.2: The "Recalibration" Update
 
-### **The Obsidian Protocol (Mobile OS)**
+In v1.5.1, I gave you beauty. In v1.5.2, I give you **speed**.
 
-We didn't just "patch" mobile support. We built a completely separate, touch-native OS for your phone.
+I looked at the battery drain on my phone and realized my "art" was killing your device. Unacceptable. So, I entered **Recalibration Mode**. I stripped the engine down, threw out the heavy math, and rebuilt the core to run cooler, faster, and smoother.
 
-* **The Morphing Glass Dock:** A dynamic navigation hub that sits at the bottom of your screen. It expands, contracts, and reacts to your touch with physics-based animations.
-* **Railgun Mobile:** Double-tap the Home button to instantly trigger the search bar. It snaps open, blurs the world, and finds your movie before you finish typing.
-* **Gyro-Parallax:** The "Hero" posters on mobile react to how you hold your phone using the gyroscope. It’s tactile. It’s moody. It’s Kino.
+Your phone will no longer melt. You're welcome.
 
-### **The Installable Monolith (PWA)**
+---
 
-* **Native App Experience:** KINO is now a fully functional Progressive Web App.
-* **Add to Home Screen:** Install it on iOS or Android. No URL bar. No browser UI. Just pure cinema in full screen.
-* **Offline-Ready:** Thanks to a custom Service Worker, the UI loads instantly, even if your internet is acting up.
+## ⚡ Patch Notes (The Optimization Arc)
 
-### **The 4K Monolith**
+### **1. The Battery Saver Protocol**
 
-* **Ultra-Res Share Cards:** Generate 2160x3840 posters to flex your taste on social media. If you're going to be a snob about cinema, do it in 4K.
+We stopped treating your phone like a supercomputer.
 
-### **Director Mode**
+* **Lazy Loading:** Images now only load when you scroll to them. The days of downloading 50 posters at once are over.
+* **4K Deprecation:** The Hero section now uses high-bitrate 1080p instead of raw 4K. You won't see the difference, but your RAM will.
+* **Gyroscope Deleted:** I removed the "tilt" effect on mobile. It was cool, but it was eating your CPU alive. Gone.
 
-* **Total Blackout:** Reading the credits or the "Director's Note"? The UI fades away, the dock vanishes, and the lights go out. It’s just you and the text.
+### **2. Cinematic Transitions (No More Sliding)**
 
-### **The Identity Pass**
+Standard "slide left/right" animations are for boring apps.
 
-* **3D Ticket Stub:** A physical-style ticket that tracks your "Archive Rank" from Novice to Master Cinephile. On desktop, it tilts in 3D based on your mouse cursor.
+* **Depth & Blur:** Navigation now uses a "Cinema" depth effect. Old pages fade and shrink into the background; new pages zoom in from a blur. It feels expensive. It feels native.
+
+### **3. Smart Railgun Search**
+
+* **New Logic:** The search engine now intelligently mixes **Movies** and **People**. It finds exact title matches *and* director filmographies, then sorts them by popularity.
+
+### **4. Ghost Mode (Mobile Only)**
+
+* **Auto-Hide UI:** Stop touching the screen for 3 seconds, and the Dock and Search button vanish. Pure immersion.
+* **Notch Support:** The header now respects your iPhone's notch. No more content hiding behind the battery icon.
+
+### **5. The 4K Share Card**
+
+* **Fixed:** No more "Gray Box" glitches when sharing.
+* **Upgraded:** Share links now generate a direct Google Search link for the movie.
 
 ---
 
 ## 🛠 Tech Stack (The Pure Stuff)
 
-* **Language:** Vanilla JavaScript (ES6+) - *No React. No Vue. No Mercy.*
-* **Styling:** Raw CSS3 (Custom Beziers, Backdrop Blurs, Masking)
+* **Language:** Vanilla JavaScript (ES6+) - *Still No React. Still No Mercy.*
+* **Styling:** Raw CSS3 (Hardware Accelerated Animations)
 * **Markup:** Semantic HTML5
 * **Engine:** The Movie Database (TMDB) API
-* **Rendering:** html2canvas (Modified for 4K output)
-* **PWA:** Service Workers & Web Manifest
+* **PWA:** Service Workers (Offline Capable)
 
 ---
 
-## 🔮 The Roadmap (Coming Soon)
+## 🔮 The Roadmap
 
-We aren't done. The sequel is already in pre-production.
-
-1. **The Cloud Upgrade:** Currently, KINO lives in `LocalStorage` (fragile). I am working on a real database so your watchlist survives the apocalypse (or a cache clear).
+1. **The Cloud Upgrade:** `LocalStorage` is still fragile. A real database is the next major arc.
 2. **Universal Scaling:** Teaching the UI to stop judging people with weird monitor resolutions.
-3. **Optimization:** Aiming for 60fps butter-smooth animations, even on potato phones.
 
 ---
 
 ## ⚠️ Known Issues
 
-1. **Battery Life:** The glassmorphism is heavy. It looks cool, but your battery might hate me.
-2. **Addiction:** You might spend more time organizing your watchlist than actually watching movies.
-3. **Bugs:** If it breaks, it’s not a bug—it’s just the app entering **"Recalibration Mode."**
+1. **Addiction:** The new animations are so smooth you might just open and close menus for fun.
+2. **Bugs:** If it breaks, it’s not a bug—it’s just a plot twist.
 
 ---
 
 ## 🖋 Credits
 
 **Lead Architect:** PreritK.
-**Fuel Source:** 50+ re-watches of Ben 10 and pure spite.
-**Consultant:** A heavily bullied (but loved) Gemini AI.
+**Fuel Source:** 55+ re-watches of *Ben 10: Alien Force* (Omniverse is next).
+**Consultant:** A heavily bullied (but currently stable) Gemini AI.
 
 *It’s Hero Time.* Muaa.
