@@ -3,15 +3,18 @@
    ========================================= */
 
 const CONFIG = {
-    apiKey: '2057f497acb30b4f59d331d432004256',
-    apiBase: 'https://api.themoviedb.org/3',
+    // We removed the API Key. It stays on the server now! (Security Win)
+    apiKey: '', 
     
-    // --- OPTIMIZED IMAGE TIERS ---
-    imgBase: 'https://image.tmdb.org/t/p/w500',       // Cards (Crisp but fast)
-    imgBlur: 'https://image.tmdb.org/t/p/w780',       // 720p (For blurred BGs - Performance Saver)
-    imgBackdrop: 'https://image.tmdb.org/t/p/w1280',  // 1080p (For Modal Backgrounds)
-    imgHero: 'https://image.tmdb.org/t/p/original',   // 4K (For Hero Main Poster only)
-    imgOriginal: 'https://image.tmdb.org/t/p/original' // 4K (For Share Cards)
+    // Point to YOUR new proxy instead of TMDB
+    apiBase: '/api/tmdb',
+    
+    // --- OPTIMIZED IMAGE TIERS (Keep these exactly the same) ---
+    imgBase: 'https://image.tmdb.org/t/p/w500',       
+    imgBlur: 'https://image.tmdb.org/t/p/w780',       
+    imgBackdrop: 'https://image.tmdb.org/t/p/w1280',  
+    imgHero: 'https://image.tmdb.org/t/p/original',   
+    imgOriginal: 'https://image.tmdb.org/t/p/original' 
 };
 
 const ICONS = {
@@ -96,14 +99,21 @@ const elements = {
    2. API HANDLING
    ========================================= */
 
-const api = {
-    async fetch(endpoint, page = 1) {
-        try {
-            const res = await fetch(`${CONFIG.apiBase}${endpoint}&api_key=${CONFIG.apiKey}&language=en-US&page=${page}`);
-            if (!res.ok) throw new Error('Network error');
-            return await res.json();
-        } catch(e) { return null; }
-    },    
+/* NEW CODE - PASTE THIS */
+async fetch(endpoint, page = 1) {
+    try {
+        // We send the endpoint to OUR proxy as a query parameter
+        const url = `${CONFIG.apiBase}?endpoint=${encodeURIComponent(endpoint)}&page=${page}`;
+        
+        const res = await fetch(url);
+        
+        if (!res.ok) throw new Error('Network error');
+        return await res.json();
+    } catch(e) { 
+        console.error("API Error:", e);
+        return null; 
+    }
+},    
 
     async getCollection(id) { return this.fetch(`/collection/${id}?`); },
     async getTrendingAll() { return this.fetch('/trending/all/week?'); },
