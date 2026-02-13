@@ -1,83 +1,66 @@
-# KINO | The Archive v1.5.2 🎬
+# KINO | The Archive v1.5.3 🎬
 
 > "Performance is not a feature. It is the Director's cut."
 
 **KINO** is a high-performance, glassmorphic vault for your cinematic history. Built with a "Directorial" mindset, it trades boring standard UI for a high-contrast, Noir-Crimson aesthetic that looks better than whatever you're currently using.
 
-It runs on **Vanilla JS**, **pure spite**, and **bullying AI** until the code runs at 60fps.
+It runs on **Vanilla JS**, **Serverless Functions**, and **pure spite**.
 
 ---
 
-## 🔋 v1.5.2: The "Recalibration" Update
+## 📡 v1.5.3: The "Ghost Signal" Update (Current)
 
-In v1.5.1, I gave you beauty. In v1.5.2, I give you **speed**.
+**The Problem:** ISPs started blocking TheMovieDB API. The app went dark for many users.
+**The Solution:** We evolved.
 
-I looked at the battery drain on my phone and realized my "art" was killing your device. Unacceptable. So, I entered **Recalibration Mode**. I stripped the engine down, threw out the heavy math, and rebuilt the core to run cooler, faster, and smoother.
+v1.5.3 introduces a **Serverless Proxy Architecture**. Instead of the browser fetching data directly (and getting blocked), KINO now routes requests through a secure Vercel Serverless Function. This bypasses censorship, hides the API key from the frontend, and improves security.
 
-Your phone will no longer melt. You're welcome.
+**The signal is back. Louder than ever.**
 
 ---
 
-## ⚡ Patch Notes (The Optimization Arc)
+## ⚡ Key Features
 
-### **1. The Battery Saver Protocol**
+### **1. The Obsidian Protocol (Mobile UI)**
+* **Fluid Dock:** A bottom navigation bar that reacts to your scroll. It hides when you're immersed, and bounces back when you need it.
+* **Haptics:** Every touch has a visual "weight" and physics-based recoil.
+* **Gesture Control:** Double-tap "Home" to trigger the Railgun Search.
 
-We stopped treating your phone like a supercomputer.
+### **2. Serverless Architecture**
+* **Zero-Config Proxy:** A Node.js backend (`/api/tmdb.js`) handles all data fetching.
+* **Security:** API Keys are never exposed to the client. They live in the cloud.
 
-* **Lazy Loading:** Images now only load when you scroll to them. The days of downloading 50 posters at once are over.
-* **4K Deprecation:** The Hero section now uses high-bitrate 1080p instead of raw 4K. You won't see the difference, but your RAM will.
-* **Gyroscope Deleted:** I removed the "tilt" effect on mobile. It was cool, but it was eating your CPU alive. Gone.
+### **3. "Railgun" Search**
+* **Smart Routing:** Instantly switches between searching for Movies, TV Shows, and Directors.
+* **Mixed Results:** Finds a director? It pulls their best movies automatically.
 
-### **2. Cinematic Transitions (No More Sliding)**
-
-Standard "slide left/right" animations are for boring apps.
-
-* **Depth & Blur:** Navigation now uses a "Cinema" depth effect. Old pages fade and shrink into the background; new pages zoom in from a blur. It feels expensive. It feels native.
-
-### **3. Smart Railgun Search**
-
-* **New Logic:** The search engine now intelligently mixes **Movies** and **People**. It finds exact title matches *and* director filmographies, then sorts them by popularity.
-
-### **4. Ghost Mode (Mobile Only)**
-
-* **Auto-Hide UI:** Stop touching the screen for 3 seconds, and the Dock and Search button vanish. Pure immersion.
-* **Notch Support:** The header now respects your iPhone's notch. No more content hiding behind the battery icon.
-
-### **5. The 4K Share Card**
-
-* **Fixed:** No more "Gray Box" glitches when sharing.
-* **Upgraded:** Share links now generate a direct Google Search link for the movie.
+### **4. Identity System**
+* **The Archive Pass:** A dynamically generated, 3D-tilt enabled ID card that tracks your watch history.
+* **Gamified Ranks:** Evolve from "Novice" to "Master" based on your watch count.
 
 ---
 
 ## 🛠 Tech Stack (The Pure Stuff)
 
-* **Language:** Vanilla JavaScript (ES6+) - *Still No React. Still No Mercy.*
-* **Styling:** Raw CSS3 (Hardware Accelerated Animations)
-* **Markup:** Semantic HTML5
+* **Frontend:** Vanilla JavaScript (ES6+), CSS3 (Hardware Accelerated)
+* **Backend:** Node.js (Vercel Serverless Functions)
 * **Engine:** The Movie Database (TMDB) API
 * **PWA:** Service Workers (Offline Capable)
+* **Persistence:** LocalStorage (Client-Side Database)
 
 ---
 
 ## 🔮 The Roadmap
 
-1. **The Cloud Upgrade:** `LocalStorage` is still fragile. A real database is the next major arc.
-2. **Universal Scaling:** Teaching the UI to stop judging people with weird monitor resolutions.
-
----
-
-## ⚠️ Known Issues
-
-1. **Addiction:** The new animations are so smooth you might just open and close menus for fun.
-2. **Bugs:** If it breaks, it’s not a bug—it’s just a plot twist.
+1.  **The Cloud Upgrade:** `LocalStorage` is still fragile. A real database (Supabase/Firebase) is the next major arc.
+2.  **Social Sync:** Share your "Archive Pass" with a live link.
 
 ---
 
 ## 🖋 Credits
 
-**Lead Architect:** PreritK.
-**Fuel Source:** 55+ re-watches of *Ben 10: Alien Force* (Omniverse is next).
-**Consultant:** A heavily bullied (but currently stable) Gemini AI.
+* **Lead Architect:** PreritK.
+* **Consultant:** A heavily bullied Gemini AI.
+* **Fuel Source:** 55+ re-watches of *Ben 10: Alien Force*.
 
-*It’s Hero Time.* Muaa.
+*It’s Hero Time.*
