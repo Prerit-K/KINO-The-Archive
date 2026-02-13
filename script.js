@@ -116,10 +116,10 @@ const api = {  // <--- THIS LINE WAS MISSING!
         }
     },  
 
-    async getCollection(id) { return this.fetch(`/collection/${id}?`); },
-    async getTrendingAll() { return this.fetch('/trending/all/week?'); },
-    async getTopMovies() { return this.fetch('/trending/movie/week?'); },
-    async getTopSeries() { return this.fetch('/trending/tv/week?'); },
+    async getCollection(id) { return this.fetch(`/collection/${id}`); },
+    async getTrendingAll() { return this.fetch('/trending/all/week'); },
+    async getTopMovies() { return this.fetch('/trending/movie/week'); },
+    async getTopSeries() { return this.fetch('/trending/tv/week'); },
 
     async getAnimeMixed() { 
         const [tv, movies] = await Promise.all([
@@ -136,25 +136,25 @@ const api = {  // <--- THIS LINE WAS MISSING!
     async search(q) { return this.fetch(`/search/multi?query=${encodeURIComponent(q)}`); },
     
     async getExtId(type, id) { 
-        const data = await this.fetch(`/${type}/${id}/external_ids?`); 
+        const data = await this.fetch(`/${type}/${id}/external_ids`); 
         return data ? data.imdb_id : null; 
     },
     
-    async getCredits(type, id) { return this.fetch(`/${type}/${id}/credits?`); },
-    async getPersonCredits(id) { return this.fetch(`/person/${id}/movie_credits?`); },
-    async getDetails(type, id) { return this.fetch(`/${type}/${id}?`); },
-    async getSeasonDetails(tvId, seasonNum) { return this.fetch(`/tv/${tvId}/season/${seasonNum}?`); },
-    async getVideos(type, id) { return this.fetch(`/${type}/${id}/videos?`); },
+    async getCredits(type, id) { return this.fetch(`/${type}/${id}/credits`); },
+    async getPersonCredits(id) { return this.fetch(`/person/${id}/movie_credits`); },
+    async getDetails(type, id) { return this.fetch(`/${type}/${id}`); },
+    async getSeasonDetails(tvId, seasonNum) { return this.fetch(`/tv/${tvId}/season/${seasonNum}`); },
+    async getVideos(type, id) { return this.fetch(`/${type}/${id}/videos`); },
     
     async getAgeRating(type, id) {
         try {
             let results = [];
             if(type === 'movie') {
-                const data = await this.fetch(`/movie/${id}/release_dates?`);
+                const data = await this.fetch(`/movie/${id}/release_dates`);
                 if(!data || !data.results) return null;
                 results = data.results;
             } else {
-                const data = await this.fetch(`/tv/${id}/content_ratings?`);
+                const data = await this.fetch(`/tv/${id}/content_ratings`);
                 if(!data || !data.results) return null;
                 results = data.results;
             }
