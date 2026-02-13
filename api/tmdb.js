@@ -22,7 +22,8 @@ export default async function handler(req, res) {
     ...params // Adds 'page', 'query', etc.
   });
 
-  const finalUrl = `${baseUrl}/${cleanEndpoint}?${queryParams.toString()}`;
+  const separator = cleanEndpoint.includes('?') ? '&' : '?';
+  const finalUrl = `${baseUrl}/${cleanEndpoint}${separator}${queryParams.toString()}`;
 
   try {
     const response = await fetch(finalUrl);
