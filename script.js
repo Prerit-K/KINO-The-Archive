@@ -99,21 +99,22 @@ const elements = {
    2. API HANDLING
    ========================================= */
 
-/* NEW CODE - PASTE THIS */
-async fetch(endpoint, page = 1) {
-    try {
-        // We send the endpoint to OUR proxy as a query parameter
-        const url = `${CONFIG.apiBase}?endpoint=${encodeURIComponent(endpoint)}&page=${page}`;
-        
-        const res = await fetch(url);
-        
-        if (!res.ok) throw new Error('Network error');
-        return await res.json();
-    } catch(e) { 
-        console.error("API Error:", e);
-        return null; 
-    }
-},    
+const api = {  // <--- THIS LINE WAS MISSING!
+    
+    async fetch(endpoint, page = 1) {
+        try {
+            // We send the endpoint to OUR proxy as a query parameter
+            const url = `${CONFIG.apiBase}?endpoint=${encodeURIComponent(endpoint)}&page=${page}`;
+            
+            const res = await fetch(url);
+            
+            if (!res.ok) throw new Error('Network error');
+            return await res.json();
+        } catch(e) { 
+            console.error("API Error:", e);
+            return null; 
+        }
+    },  
 
     async getCollection(id) { return this.fetch(`/collection/${id}?`); },
     async getTrendingAll() { return this.fetch('/trending/all/week?'); },
