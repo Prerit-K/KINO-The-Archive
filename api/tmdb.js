@@ -1,48 +1,41 @@
-// api/recommend.js
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  // 1. Extract the endpoint and other parameters (like page, query) from the URL
+  const { endpoint, ...params } = req.query;
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // 2. Get your API Key securely from Vercel's settings
+  const apiKey = process.env.TMDB_API_KEY; 
+  const baseUrl = "https://api.themoviedb.org/3";
 
-  const { prompt, genres, type } = req.body;
-
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(500).json({ error: "Server Error: API Key missing in Vercel Settings." });
+  if (!endpoint) {
+    return res.status(400).json({ error: "Endpoint is required" });
   }
 
+  // 3. Clean up the endpoint (remove leading slash if present)
+  // e.g., "/movie/popular" becomes "movie/popular"
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+
+  // 4. Construct the query string manually to ensure it's clean
+  // We explicitly add the api_key here.
+  const queryParams = new URLSearchParams({
+    api_key: apiKey,
+    language: 'en-US', // Default language
+    ...params // Adds 'page', 'query', etc.
+  });
+
+  const separator = cleanEndpoint.includes('?') ? '&' : '?';
+  const finalUrl = `${baseUrl}/${cleanEndpoint}${separator}${queryParams.toString()}`;
+
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const response = await fetch(finalUrl);
+    const data = await response.json();
 
-    const finalPrompt = `
-      Act as a high-end movie recommendation engine.
-      User Context:
-      - Vibe/Request: "${prompt || 'Surprise me'}"
-      - Selected Genres: ${genres ? genres.join(", ") : "Any"}
-      - Type: ${type || 'Movie'}
+    // 5. Add CORS headers so your website (the frontend) is allowed to read this data
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-      Task: Recommend exactly ONE perfect title.
-      Output: Strictly JSON. No Markdown.
-      {
-        "title": "Exact Title",
-        "year": "YYYY",
-        "reason": "A sophisticated, intriguing one-sentence reason why this fits."
-      }
-    `;
-
-    const result = await model.generateContent(finalPrompt);
-    const text = result.response.text();
-    const cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    res.status(200).json(JSON.parse(cleanText));
-
+    res.status(200).json(data);
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    res.status(500).json({ error: "The Oracle is confused." });
+    res.status(500).json({ error: "Failed to fetch from TMDB", details: error.message });
   }
 }
